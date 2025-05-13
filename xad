@@ -1,1255 +1,380 @@
-StatusPlayer[0],$lastStatusPlayer[2],$lastStatusPlayer[3],$lastStatusPlayer[4]) = getVidTimes(); $msg = playerStatus('useArray');
-	var_dump($msg);
-	if ($lastStatusPlayer[0] == "Playing") {
-		loopyLoop(5);
-	}
-	return $msg;
-}
-
-function loopyLoop($time) {
-	global $loop;
-	global $statusTimer;
-	if ($statusTimer !== NULL) { $loop->cancelTimer($statusTimer); $statusTimer = NULL; }
-
-	$statusTimer = $loop->addTimer(intval($time), function () use ($loop, $statusTimer) {
-		fruityLooper();
-	});
+label = $item['label'];
+			$title = $item['title'];
+			$name = $title;
+			if (!$name) { $name = $label; }
+			if (!$name) { $name = $filename; }
+			// if (count($artist)) {
+				// $artist = $artist[0];
+				// if ($artist) {
+					// $name = '['.$artist.'] '.str_replace($artist,'',$name);
+				// }
+			// }
+			// $name = str_replace(['[B]','[/B]'],'**',$name);
+			$name = kodiTitle($name,$artist,$file);
 	
+			if ($type == 'directory' && startsWith($item['title'],"Next page") && startsWith($file,'plugin://plugin.video.youtube/kodion/search/query')) {
+				$nextpage = $file;
+			} else if ($type == 'directory') {
+				$ndir[] = $item;
+			}
+			if (startsWith($file,'plugin://plugin.video.youtube/play/?video_id=')) {
+				$ndir[] = $item;
+				if ($type == 'file') {
+					$vid = explode('=',$file)[1];
+					$ytmap[$vid] = $name;
+					// $ndir[] = $item;
+				}
+			}
+		}
+		$page++;
+		// $nextpage = array_values(array_filter($dir,fn($val) =>  $val['filetype'] == 'directory' && startsWith($val['title'],"Next page")))[0];
+		if (!$nextpage) {
+			break;
+		}
+		$npath = $nextpage;
+		$json = '{"jsonrpc":"2.0","method":"Files.GetDirectory","id":"1743603938944","params":{"directory":"'.$npath.'","media":"video","properties":["title","file","artist","duration","runtime","playcount","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+		$dir = $_Kodi->sendJson($json);
+		var_dump($page);
+	}
+	file_put_contents('ndir.json',json_encode($ndir, JSON_PRETTY_PRINT));
+	file_put_contents('ytmap.json',json_encode($ytmap, JSON_PRETTY_PRINT));
+	var_dump($ytmap);
+	return $ndir;
+
 }
 
-function loopy($time) {
-	global $loop;
-	global $timer;
-	if ($timer !== NULL) { $loop->cancelTimer($timer); $timer = NULL; }
+$kodi = [];
+$kodi['paths'] = null;
+$kodi['sources'] = null;
+$kodi['hist'] = ['sources'];
+$kodi['playrandom'] = false;
+$kodi['queuerandom'] = false;
+$kodi['playing'] = null;
+$kodi['playfile'] = null;
+$kodi['playfilename'] = null;
+$kodi['playpic'] = null;
+// $kodi['movies'] = [];
 
-	$timer = $loop->addTimer(intval($time), function () use ($loop, $timer) {
-		setVoiceStatus('');
-	});
+function kodiTitle($name,$artist = [],$file = false) {
+	if (is_array($artist) && count($artist)) {
+		$artist = preg_replace("/ - Topic$/",'',$artist[0]);
+		if ($artist) {
+			$name = str_replace($artist,'',$name);
+			// $name = $artist.$name;
+		} else {
+			$artist = false;
+		}
+	} else {
+		$artist = false;
+	}
+	$name = str_replace(['[B]','[/B]'],'**',$name);
+
+	$vid = false;
+	if ($file && startsWith($file,'plugin://plugin.video.youtube/play/?video_id=')) {
+		$vid = explode('=',$file)[1];
+	}
+	if ($vid) { 
+		// preg_match('/^[\x{0590}-\x{05fe} ]+$/u',$name,$matches);
+		preg_match("/\\\u[0-f].../",trim(json_encode($name),'"'),$matches);
+		if (count($matches) || strpos($name,':')) {
+			$name = " $name [$vid](<https://www.youtube.com/watch?v=$vid>)";
+		} else {
+			$name = " [$name](<https://www.youtube.com/watch?v=$vid>)";
+		}
+	}
+
+	if ($artist) {
+		$name = '['.$artist.']'.$name;
+	}
+	return $name;	
+}
+
+function secsToTimeArray($secs,$assoc = false) {
+	// $newtime = explode(':',date('H:i:s',strtotime("midnight + $secs seconds")));
+	$newtime = explode(':',gmdate("H:i:s", $secs));
+	if ($assoc) { return ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]; }
+	return $newtime;
+}
+
+function usortLabel($a, $b) { return (preg_replace('/[^a-z\d ]/i','',$a['filetype'].$a['label']) <=> preg_replace('/[^a-z\d ]/i','',$b['filetype'].$b['label'])); }
+
+function renderDir($dirs,$curpath,$curitem = null,$paginate = false) {
+	if ($curitem !== null) { $curitem = stripslashes($curitem); }
 	
+	// if (isset($dirs['error'])) {
+		// var_dump($dirs['error'],$path);
+		// return;
+	// }
+	// if (!kodiError($dirs)) { return false; }
+	if ($kerr = kodiError($dirs)) { return $kerr; }
+
+	$files = $dirs;
+	if (isset($dirs['result'])) {
+		$files = $dirs['result']['files'];
+	} else	if (isset($dirs['files'])) {
+		$files = $dirs['files'];
+	}
+	global $kodi;
+	$kodi['plmode'] = "files";
+
+	if (startsWith($curpath,'plugin://plugin.video.youtube/')) {
+		$kodi['plmode'] = "yt";
+		// $last = $dirs[array_key_last($dirs)];
+		// if ($isset($last) && $last['filetype'] == 'directory' && startsWith($last['title'],"Next page")) {
+		if (!isset($files['ytparsed'])) {
+			if (!$files = cacheYTNames($files)) { return "E4744"; }
+			unset($files['ytparsed']);
+		// } else {
+			// unset($files['ytparsed']);
+			// $files = $dirs;
+		}
+	}
+	if (isset($files['ytparsed'])) {
+		unset($files['ytparsed']);
+	}
+
+	$dirs = $files;
+	if ($curpath == 'bookmarks') {
+		$kodi['plmode'] = "bookmarks";
+	}
+
+	if (	$kodi['plmode'] == 'files') {
+		var_dump(usort($dirs,'usortLabel'),$dirs);		
+		file_put_contents('dirfiles.json',json_encode($dirs, JSON_PRETTY_PRINT));
+		//exit;
+	}
+
+	global $nums;
+	$play = '▶';
+	$pause = '⏸';
+	// if (!isset($dirs['result'])) {
+		// var_dump($dirs,'DIRS ERROR');
+		// return false;
+	// }
+	// $dirs = $dirs['result']['files'];
+	
+	$kodi['path'] = $curpath;
+
+	if (!count($kodi['hist']) || $kodi['hist'][array_key_last($kodi['hist'])] !== $curpath) {
+		$kodi['hist'][] = $curpath;
+	}
+	if ($curpath == "sources" && $dirs[0]['label'] == "Video add-ons") { $paginate = true;array_shift($dirs); }
+	$kodi['menu'] = [];
+	$page = 0;
+	if ($paginate) {
+			$output[$page] = "";
+	} else {
+		// $output .= " $watched$key: $name $dur\n";
+		$output = '';
+	}
+
+
+
+	if (!count($dirs)) {
+		$output = '0 results';
+	}
+	
+	$ic = 1;
+	foreach ($dirs AS $key => $item) {
+		$filename = $item['file'];
+		$file = false;
+		if (isset($item['mediapath'])) {
+			$file = $item['mediapath'];
+		}
+		if (!$file) { $file = $filename; }
+		$artist = [];
+		if (isset($item['artist'])) {
+			$artist = $item['artist'];
+		}
+		$title = $item['title'];
+		$name = $item['label'];
+		if (!$name) { $name = $title; }
+		if (!$name) { $name = $filename; }
+		$vid = false;
+		$file = stripslashes($file);
+		
+		$name = kodiTitle($name,$artist,$file);
+
+		$type = ($curpath == 'sources')?'directory':$item['filetype'];
+		// $path = $item['file'];
+		$path = stripslashes($file);
+		$pic = $item['thumbnail'];
+		if (!$name) { $name = $path; }
+		$watchedbool = false;
+		$watched = '🔲';
+		if (isset($item['playcount']) && $item['playcount'] == 1) {
+			$watchedbool = true;
+			$watched = "✅";
+		}
+		$totaltime = '{}';
+		if (isset($item['totaltime']))	{
+			$totaltime = json_encode($item['totaltime']);
+		}
+		$dur = '';
+		if (isset($item['runtime']))	{
+			$totaltime = secsToTimeArray($item['runtime']);
+			$dur = gmdate("H:i:s", $item['runtime']);
+		}
+		$resume = 0;
+		if (isset($item['resume']) && is_numeric($item['resume']['position']) && $item['resume']['position'] > 0)	{
+			var_dump('777777777777777777',$item['resume']['position']);
+			$watched = $pause;
+			if (!$dur && isset($item['resume']['total'])) {
+				$totaltime = secsToTimeArray($item['resume']['total']);
+				$dur = gmdate("H:i:s", $item['resume']['total']);
+			}
+			$resume = $item['resume']['position'];
+			if ($dur) { 
+				$dur = gmdate("H:i:s", $resume)." / ".$dur; 
+			}	else { $dur = gmdate("H:i:s", $resume); }
+		}
+		if ($type == 'directory') {
+			$watched = '📁';
+		}
+		if ($path == $curitem) {
+			$watchedbool = 'playing';
+			$watched = $play;
+		}
+		
+		$code = '';
+		if ($paginate) {
+		}
+		
+		
+		if ($paginate) {
+			if ($ic >= 11) { $page++; $ic = 1;
+				$code = $nums[$ic];
+				$output[$page] = "$code $watched: $name $dur\n";
+				//$ic++;
+				//$output[$page] = "";
+			} else {
+				$code = $nums[$ic];
+				$output[$page] .= "$code $watched: $name $dur\n";
+			}
+		} else {
+			$output .= "$watched$key: $name $dur\n";
+		}
+		if (is_array($totaltime)) {$totaltime = json_encode($totaltime); }
+		$kodi['menu'][$key] = [$type,$path,$watchedbool,$name,intval($resume),$totaltime,$code,[$page,$ic]];
+		$ic++;
+	}
+	file_put_contents('menu.json',$curitem."\n\n".json_encode($kodi['menu'], JSON_PRETTY_PRINT));
+	return $output;
 }
 
-// Check for an error status and redirect error message parts to admin/user appropriately
-function kodiError($return) {
-	$error = '';
-	if (isset($return['error'])) {
-		sendMsg('380675774794956800',  print_r($return['error'],true));
-		if (!is_array($return['error'])) { $error = "\n".$return['error']; }
-		return "There was a problem processing your request!".$error;
+$nums = ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"];
+
+$ssaveron = false;
+
+function renderQueue($items,$curitem = null) {
+	$play = '▶';
+	global $ssaveron;
+	global $ytmap;
+	global $kodi;
+	$kodi['plmode'] = "queue";
+	$ssaveron = false;
+	if (!isset($items['result'])) {
+		var_dump($items,'queue render ERROR');
+		return false;
 	}
-	return false;
-}
-
-$discord = new Discord([
-	'token' => $GLOBALS['myToken'],
-	// 'pmChannels' => true,
-	'storeMessages' => true,
-	'loadAllMembers' => true,
-	'intents' => 53608447,
-	'loop' => $loop
-	// 'intents' => Intents::getDefaultIntents() | [Intents::GUILD_MEMBERS,Intents::GUILD_PRESENCES,Intents::MESSAGE_CONTENT] // Enable the `GUILD_MEMBERS` intent
-]);
-
-$discord->on('init', function (Discord $discord) {
-	$activity = $discord->factory(\Discord\Parts\User\Activity::class, 
-		['name' => $GLOBALS['activityName'], 'type' => 2] //, 'name' => 'Test']
-	);
-	$discord->updatePresence($activity);
-
-	populateChannelsIds();
-	populateNicksIds();
-
-	connectKodi($GLOBALS['amDev']);
-
-	$botready = "KodiKitty is ready!";
-	echo $botready;
-
-	$channelid = file_get_contents($GLOBALS['filePrefix'].'lastchan');
-	file_put_contents($GLOBALS['filePrefix'].'lastchan','none');
-	if ($channelid != 'none' && $channelid != '') {
-		$channelid = explode(':',$channelid);
-		var_dump($channelid);
-		$guildid = $channelid[0];
-		$channelid = $channelid[1];
-		if ($guildid == 'DM') {
-			sendMsg($channelid, $botready);
-		} else {
-			$discord->guilds->get('id', $guildid)
-				->channels->get('id', $channelid)
-				->sendMessage($botready.tacoGen());
-		}
-	}			
-
-	$guild = $discord->guilds->get('id', 788607168228229160);
-
-	if ($guild) {
-		$channel = $guild->channels->get('id', 844468574462148658);
-		$channel->sendMessage($botready);
+	$items = $items['result']['items'];
+	
+	// $kodi['path'] = $path;
+	$kodi['hist'][] = "queue";
+	// $kodi['menu'] = [];
+	$kodi['queue'] = [];
+	$output = "            **__Queue List__** \n";
+	if (!count($items)) {
+		$output .= '0 results';
 	}
-	sendMsg(380675774794956800, $botready);
-
-	$discord->on(Event::GUILD_MEMBER_ADD, function (Member $member, Discord $discord) {
-		populateNicksIds();
-	});
-	$discord->on(Event::GUILD_MEMBER_UPDATE, function (Member $new, Discord $discord, $old) {
-		populateNicksIds();
-	});
-	$discord->on(Event::GUILD_MEMBER_REMOVE, function (Member $member, Discord $discord) {
-		var_dump(json_encode($reaction));
-		populateNicksIds();
-	});
-
-	$discord->on(Event::MESSAGE_REACTION_ADD, function ($reaction, Discord $discord) {
-		var_dump('$reaction');
-		$dmMode = false;
-		$amDev = $GLOBALS['amDev'];
-		if(!isset($reaction['guild_id']) || $reaction['guild_id'] === NULL) { 
-			$author = $reaction['user_id'];
-			error_log("RA-DM mode");
-			$dmMode = true;
+	//var_dump('9999999999999999999999999999999999999999999999999999$ytmap');
+	var_dump($ytmap);
+	foreach ($items AS $key => $item) {
+		if (isset($item['mediapath']) && $item['mediapath']) {
+			$path = $item['mediapath'];
 		} else {
-			error_log("RA-Channel mode");
-			if ($reaction['author'] !== NULL) {
-				$author = $reaction['author']['id'];
-			} else if ($reaction['user_id'] !== NULL) {
-				$author = $reaction['user_id'];
-
-			} else {
-				error_log("reaction author is NULL");
-			}
+			$path = $item['file'];
 		}
+		$path = stripslashes($path);
+		// $ssaver = 'http://sylvan.apple.com/Videos';
+		// if ( $ssaveron = startsWith($path,$ssaver)) { continue; }
 
-	file_put_contents('reactiondata.json',json_encode($reaction,JSON_PRETTY_PRINT));
-		if ($amDev) { var_dump('$author,$GLOBALS["myID"],$GLOBALS["otherID"]',$author,$GLOBALS['myID'],$GLOBALS['otherID']); }
-		if ($author == $GLOBALS['myID'] || $author == $GLOBALS['otherID']) {
-			if ($amDev) { var_dump('COOOKIESSSSS 899999999999999999'); }
-
-			return;
-		}
-
-
-		// $isws = checkWorkspace($data);
-		$isws = checkWorkspace($reaction);
-		if ($amDev) { var_dump('$isws',$isws,$reaction['emoji']->name); }
-		// var_dump($data);
-		var_dump('$reaction');
-		// var_dump($reaction);
-		//var_dump( checkWorkspace($reaction));
-		global $emoteArray;
-		$eaNames = array_flip($emoteArray);
-		$emojiname = $reaction['emoji']->name;
-		$emojianame = null;
-		if (isset($eaNames[$emojiname])) {
-			$emojianame = $eaNames[$emojiname];
-			if ($emojianame == "taco") {
-				sendReply($reaction, "https://www.crystalshouts.com/graha.gif \nOm nom nom!");
-				return;
-			}
-		}					
-
-
-		if ($isws) {
-			if ($isws === true) {
-				$isws = "";
-			}
-			$name = $isws;
-			$channel = getChannel($reaction);
-			$channel->broadcastTyping();
-
-			$emojiid = $reaction['emoji']->id;
-			// var_dump('$emojianame',$emojianame);
-			// $message->deleteReaction(Message::REACT_DELETE_ID, $emoji, 'member_id')->done(function () {
-				// // ...
-			// });
-			if ($amDev) { var_dump('000000000001111',$emojiid,$emojianame,$emojiname); }
-			if (!$dmMode) {
-				$channel = getChannel($reaction);
-				//$message = $channel->messages->get('id', $reaction['message_id']);
-				$channel->messages->fetch($reaction['message_id'])->then(function (Message $message) use ($reaction,$author,$amDev) {
-					// $message->deleteReaction(Message::REACT_DELETE_ALL)->then(function ($x) use ($reaction) {
-					$emojiname = $reaction['emoji']->name;
-					$message->deleteReaction(Message::REACT_DELETE_ID, $emojiname, $author)->then(function ($x) use ($reaction,$amDev){
-						if ($amDev) { var_dump('$x',$x); }
-						// $reaction->react('⬅');
-						// $reaction->react('➡');
-					});
-				});
-			}
-			$page = null;
-			reactionAction($emojianame,$reaction,$name);
-			return;
-			
-			// if ($emojiname == "⬅") {
-				// $page = 'b';
-			// } else if ($emojiname == "➡") {
-				// $page = 'n';
-			// }
-			
-			
-			// if ($page !== null) {
-			// }
-			
-		}
-		if (!$isws && $dmMode) {
-			return;
-			$emoji = ":triforce:852929142093643806";
-			$channel = getChannel($reaction);
-			// $message = $channel->messages->get('id', $reaction['message_id']);
-				// var_dump("STATUS",$message,$wid);
-			// if ($message == NULL) {
-	// ...
-
-				$channel->messages->fetch($reaction['message_id'])->done(function (Message $message) use ($emoji) {
-			// $message->deleteReaction(Message::REACT_DELETE_ALL)->done(function () use ($message,$emoji) {
-					//var_dump("STATUS",$message);
-					$message->react($emoji);// $message->channel->editMessage($message, $output);
-				});
-			// });
-			// } else {
-				// $message->react($emoji);// $message->channel->editMessage($message, $output);
-					// $message->channel->editMessage($message, $output);
-			// }
-
-			return;
-		}
-
-		$channel = $reaction['channel_id'];
+		var_dump('AAAAAAAAAAAAAAAAAAAAA',$key,$curitem,$path);
 		
-		
-		
-		if ($channel != '791286916334616576') {
-			return;
-		}
-		
-		$rolearray = [
-			'844460031537446962' => '934836079163473951',
-			'844459869381328946' => '934836370927673386',
-			'844495918740275210' => '934836316481421392',
-			'844495918589673473' => '934836445053603881',
-			'733657344088473631' => '937374251508432959',
-			'844581570764341288' => '867119306391420929',
-			'844495918664384572' => '937378270503120967',
-			'945039418635481169' => '945039541415329792'
-		];
-		
-		$did = $reaction['user_id'];
-		$emoji = $reaction['emoji']->id;
-		$emojiname = $reaction['emoji']->name;
-		$guild = $discord->guilds->get('id', 788607168228229160);
-		$member = $guild->members->get('id', $did);
-		$role = $rolearray[$emoji];
-		try {
-			$member->addRole($rolearray[$emoji])->done(function($return) use ($reaction,$guild,$role,$did,$emojiname,$emoji) {
-				$guild->channels->get('id', 798334904508219462)->sendMessage("<@$did> add <:$emojiname:$emoji> <@&$role>");
-				//sendReply($reaction, "butter that role, joel! they got a {role-id-name}-craving!");
-			});
-		} catch(Exception $e) {
-			error_log("add role - ".print_r($reaction,true));
-			error_log($e);
-		}
-		// sendReply($reaction, "givvem da role, joel! $channel $did $emoji");
-		var_dump("REACTION ADD - ", $rolearray[$emoji], $emoji,$did,$channel);
-	});
 
-	$discord->on(Event::MESSAGE_REACTION_REMOVE, function ($reaction, Discord $discord) {
-
-		var_dump('$reaction-REMOVE');
-		// var_dump($reaction);
-		$dmMode = false;
-		// if($reaction->channel->guild_id === NULL) { 
-		if(!isset($reaction['guild_id']) || $reaction['guild_id'] === NULL) { 
-			$author = $reaction['user_id'];
-
-			
-			// $author = preg_replace("/[^0-9]/", "", $reaction->user);
-			// $author = $reaction['author']['id'];
-			error_log("RA-DM mode");
-			$dmMode = true;
-		} else {
-			error_log("RA-Channel mode");
-			if ($reaction['author'] !== NULL) {
-				$author = $reaction['author']['id'];
-			} else if ($reaction['user_id'] !== NULL) {
-				$author = $reaction['user_id'];
-
-			} else {
-				error_log("reaction author is NULL");
+		$name = $item['title'];
+		$label = $item['label'];
+		if (!$name) {	$name = $item['label'];	}
+		if (!$name) {	$name = $item['file'];	}
+		if (startsWith($path,'plugin://plugin.video.youtube/play/?video_id=') ) {
+			$vid = explode('=',$path)[1];
+			if (isset($ytmap[$vid])) {
+				$name = $ytmap[$vid];
 			}
+		// } else if (startsWith($path,'plugin:\/\/plugin.video.youtube\/play\/?video_id') && isset($ytmap[$path])) {
+			// $name = $ytmap[addcslashes($path,'//')];
 		}
-
-		var_dump('$author',$author,$GLOBALS['myID'],$GLOBALS['otherID']);
-		if ($author == $GLOBALS['myID'] || $author == $GLOBALS['otherID']) {
-			var_dump('COOOKIESSSSS 55555555555555555555777777777777777');
-			return;
+		// $type = $item['filetype'];
+		$pic = $item['thumbnail'];
+		$watchedbool = false;
+		$watched = '🔲';
+		if (isset($item['playcount']) && $item['playcount'] == 1) {
+			$watchedbool = true;
+			$watched = "✅";
 		}
-
-		$isws = checkWorkspace($reaction);
-		if ($isws && !$dmMode) {
-			var_dump('YEEEEEEEEEEEEET COOOKIESSSSS 55555555555555555555777777777777777');
-			return;
+		if ($path == $curitem) {
+			$watchedbool = 'playing';
+			$watched = $play;
 		}
-		var_dump('$isws',$isws);
-		// var_dump($data);
-		var_dump('$reaction-REMOVE-ISWS');
-		var_dump($reaction);
-		//var_dump( checkWorkspace($reaction));
-		if ($isws && $dmMode) {
-
-			if ($isws === true) {
-				$isws = "";
-			}
-			$name = $isws;
-
-			$channel = getChannel($reaction);
-			$channel->broadcastTyping();
-
-			global $emoteArray;
-			$eaNames = array_flip($emoteArray);
-			$emojiname = $reaction['emoji']->name;
-			$emojianame = null;
-			if (isset($eaNames[$emojiname])) {
-				$emojianame = $eaNames[$emojiname];
-
-
-
-			}					
-			
-			
-			
-			// $emojiname = $reaction['emoji']->name;
-			// $emojiid = $reaction['emoji']->id;
-			// // $message->deleteReaction(Message::REACT_DELETE_ID, $emoji, 'member_id')->done(function () {
-				// // // ...
-			// // });
-			// var_dump('000000000001111',$emojiid,$emojianame);
-			// $page = null;
-			// if ($emojiname == "⬅") {
-				// $page = 'b';
-			// } else if ($emojiname == "➡") {
-				// $page = 'n';
-			// }
-			// // $channel = getChannel($reaction);
-			// //$message = $channel->messages->get('id', $reaction['message_id']);
-			// // $channel->messages->fetch($reaction['message_id'])->done(function (Message $message) use ($reaction,$author) {
-				// // // $message->deleteReaction(Message::REACT_DELETE_ALL)->then(function ($x) use ($reaction) {
-				// // $emojiname = $reaction['emoji']->name;
-				// // $message->deleteReaction(Message::REACT_DELETE_ID, $emojiname, $author)->done(function ($x) use ($reaction){
-					// // var_dump('$x',$x);
-					// // $reaction->react('⬅');
-					// // $reaction->react('➡');
-				// // });				
-			// // });
-			// if ($page !== null) {
-				// wsPages($reaction,NULL,$page);
-			// }
-
-
-			$page = null;
-
-			reactionAction($emojianame,$reaction,$name);
-
-			// switch ($emojianame) {
-				// case "playlist":
-					// kodi('queue',null,$reaction);
-				// break;
-				// case "showlist":
-					// kodi('showlist',null,$reaction);
-				// break;
-				// case "tv":
-					// kodi('shows',null,$reaction);
-				// break;
-				// case "back":
-					// kodi('back',null,$reaction);
-				// break;
-				// case "movies":
-					// kodi('movies',null,$reaction);
-				// break;
-				// case "prev":
-					// wsPages($reaction,NULL,'b');
-				// break;
-				// case "next":
-					// wsPages($reaction,NULL,'n');
-				// break;
-				// case "stop":
-					// kodi('stop',null,null);
-				// break;
-				// case "ff":
-					// $arg  = ['time',["+25 seconds"]];
-					// kodi("seek",$arg,$data);
-				// break;
-				// case "playpause":
-					// kodi('playPause',null,null);
-				// break;
-			// }
-			return;
-
-			
-		}
-
-
-
-
-
-		$channel = $reaction['channel_id'];
-		if ($channel != '791286916334616576') {
-			return;
-		}
-
-		$rolearray = [
-			'844460031537446962' => '934836079163473951',
-			'844459869381328946' => '934836370927673386',
-			'844495918740275210' => '934836316481421392',
-			'844495918589673473' => '934836445053603881',
-			'733657344088473631' => '937374251508432959',
-			'844581570764341288' => '867119306391420929',
-			'844495918664384572' => '937378270503120967',
-			'945039418635481169' => '945039541415329792'
-		];
-		
-		$did = $reaction['user_id'];
-		$emoji = $reaction['emoji']->id;
-		$emojiname = $reaction['emoji']->name;
-		$guild = $discord->guilds->get('id', 788607168228229160);
-		$member = $guild->members->get('id', $did);
-		$role = $rolearray[$emoji];
-		try {
-			$member->removeRole($rolearray[$emoji])->done(function($return) use ($reaction,$guild,$role,$did,$emojiname,$emoji) {
-				$guild->channels->get('id', 798334904508219462)->sendMessage("<@$did> remove <:$emojiname:$emoji> <@&$role>");
-			
-			// function () use ($reaction) {
-				// sendReply($reaction, "unbutter that role, joel! they don't want a {role-id-name}-craving!");
-			});
-		} catch(Exception $e) {
-			error_log(print_r($reaction,true));
-			error_log($e);
-		}			// sendReply($reaction, "giveitaway givitaway nowww $channel $did $emoji");
-		var_dump("REACTION REMOVE",$emoji,$did,$channel);
-	});
-
-	// Listen for messages.
-	$discord->on(Event::MESSAGE_UPDATE, function (Message $data, Discord $discord, $oldData) {
-		if ($data['channel_id'] == '791272018279923755' && isset($data['content'])) {
-			print_r('BOT AUDIT: '.$data['content']);
-			if (isset($data['embeds']) ) { 
-				var_dump('BOT AUDIT - EMBED: ',$data['embeds']);
-			}
-		}
-		// if ($author != '380675774794956800') {
-			// return;
+		// if ($type == 'directory') {
+			// $watched = '📁';
 		// }
-
-		if ($data->channel->guild_id != NULL && ( isset($data['author']) && $data['author']['id'] == $GLOBALS['myID']) ) { return; }
 		
-		if ($data['channel_id'] == '839614327002628107' && $data['author']['id'] == '475744554910351370') {
-			// var_dump($data);
-			if (!isset($data['embeds']) ) { return;	}
-			eventMgr($oldData,$data);
-		}
-	});
+		//$kodi['menu'][$key] = ['file',$path,$watchedbool,$name,intval($resume)];
+		$kodi['queue'][$key] = ['file',$path,$watchedbool,$name,$pic];
+		
+		$output .= " $watched$key: $name \n";
+	}
+	file_put_contents('queuemenu.json',$curitem."\n\n".json_encode($kodi['queue'], JSON_PRETTY_PRINT));
+	file_put_contents('queueitems.json',json_encode($items, JSON_PRETTY_PRINT));
+	return $output;
+}
 
-	$discord->on(Event::MESSAGE_CREATE, function (Message $data, Discord $discord) {
-	// var_dump($data->channel->guild_id);
+function filterArrayByKeyValue($array, $key, $keyValue) {
+  return array_filter($array, function($value) use ($key, $keyValue) {
+    return $value[$key] == $keyValue; 
+  });
+}
+
+$curpath = '';
+
+function padInt($val) {
+	return str_pad($val,2,'0',STR_PAD_LEFT);
+}
+
+//$_Kodi = null;
+function connectKodi($verbose = false) {
+	global $_Kodi;
+	$IP = 'localhost:8088';
+	sendMsg('380675774794956800',  "Connecting to $IP...");
+	$_Kodi = new Kodi($IP);
+	if (isset($_Kodi->error)) { 
+		sendMsg('380675774794956800',  print_r($_Kodi->error,true));
+	} else {
+		sendMsg('380675774794956800',  "Connected to $IP");
+	}
+}
+
+function fixKodiAudio() {
+	global $kodi;
+	if ((isset($kodi['playing']) && startsWith($kodi['playing'],'plugin://plugin.video.youtube/')) || (isset($kodi['path']) && startsWith($kodi['path'],'plugin://plugin.video.youtube/play/?video_id=') )) {
+		var_dump("I sense youtube is afoot. dipping");
+		return;
+	}
 	
-	$data['content'] = '.'.$data['content'];
-	
-		if ($data['channel_id'] == '791272018279923755' && isset($data['content'])) {
-			print_r('BOT AUDIT: '.$data['content']);
-			if (isset($data['embeds']) ) { 
-				var_dump('BOT AUDIT - EMBED: ',$data['embeds']);
-			}
-		}
-
-		global $nicks;
-		global $memberids;
-
-		$dmMode = 0;
-		if(!isset($data['guild_id']) || $data['guild_id'] === NULL) { 
-			if(isset($data['user_id'])) {
-				$author = $data['user_id'];
-			} else {
-				$author = $data['author']['id'];
-			}
-			error_log("DM mode");
-			$dmMode = 1;
-		} else {
-			error_log("Channel mode");
-			$author = $data['author']['id'];
-		}
-
-		if ($author == $GLOBALS['otherID'] && $data['content'] != '.reset' && !startsWith($data['content'],'.shout') ) { error_log("other bot is talking. ignoring."); return; }
-
-		if ($author != '380675774794956800' || (!$dmMode && $data['channel_id'] != '1370142425292738673' )) {	
-			var_dump('NOT TV REMOTE CHANNEL');
-			return;	
-		}
-
-		if ( $GLOBALS['commandPrefix'] != '.' ) { 
-			$data['content'] = preg_replace('/^\./', 'CMD_PREFIX_IGNORE_THIS', $data['content']);
-			$data['content'] = preg_replace('/^'.$GLOBALS['commandPrefix'].'/', '.', $data['content']);
-		}
-
-		$commpref = false;
-
-		if (isset($data['content']) && startsWith(strtolower($data['content']),$GLOBALS['commandPrefix']) && !startsWith(strtolower($data['content']),$GLOBALS['commandPrefix'].$GLOBALS['commandPrefix'])) {
-			error_log("Command prefix detected. Command issued is: ".$data['content']."\n");
-			if (file_exists("/tmp/maintenance.lock")) {
-				sendReply($data, "Crystal Systems is in maintenance mode. Please try again in a few minutes.");
-				return;
-			}
-			$commpref = true;
-			//if ($dmMode == 1) { sendReply($data, "The ".$GLOBALS['commandPrefix']." is not needed in a DM. *tosses the ".$GLOBALS['commandPrefix']." out the window*"); }
-		} else if (	$dmMode == 1 && $data['content'] != 'hello computer' ) { 
-			$data['content'] = '.'.$data['content']; 
-		}
-
-		if ($dmMode == 1 && $author == $GLOBALS['myID'] ) { error_log("fiiiiiiii"); return; }
-
-		if ($author !== $GLOBALS['otherID'] && $author !== $GLOBALS['myID'] && ($commpref || $dmMode) && isset($data['channel_id']) && !empty($data['channel_id'])) {
-			$channel = getChannel($data);
-			$channel->broadcastTyping();
-		}
-
-		if (($data['channel_id'] == '839614327002628107' && $data['author']['id'] == '475744554910351370' ) || strtolower($data['content']) === '.apollotest') {
-			// var_dump($data);
-			if (!isset($data['embeds']) ) { return;	}
-			eventMgr('add',$data);
-		}
-		
-		// $eventadchs = [835671836977004615,957077695836082266];
-		// $venueadchs = [788934728468004874,957077271485771797];
-
-// workspace dev and testing stubs
-		if (isset($data['content']) && strtolower($data['content']) === '.testws' || startsWith(strtolower($data['content']),'.workspace') || startsWith(strtolower($data['content']),'.wsout ') || startsWith(strtolower($data['content']),'.wfortune')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$info = explode(' ',trim($data['content']));
-				$wid = null;
-				$new = false;
-				$output = null;
-				$name = '';
-				
-				if (isset($info[0]) && trim($info[0]) == '.wfortune') {
-					$fortune = new Fortune();
-					@$msg = $fortune->QuoteFromDir("fortune_data/");
-					// $content = nl2br($msg);
-					// print_r($data['author']['id'].'----------------------------------------------------');
-					$content = str_replace(array("<br />", "<br/>", "<br>"), "\n", $msg);
-					$remove = array("\r", "<p>", "</p>", "<h1>", "</h1>");
-					$msg = str_replace($remove, ' ', $content);
-					outputWorkspace($data,$msg);
-					return;
-				
-				}
-				if (isset($info[0]) && trim($info[0]) == '.wsout') {
-					// if (isset($info[1]) && $info[1] !== 'reset') {
-					$cmd = array_shift($info);
-					$name = array_shift($info);
-					$output = implode(' ',$info);
-					var_dump("DATA",$output,$name);
-					outputWorkspace($data,$output,$name);
-				} else {
-					if (isset($info[1]) && $info[1] == 'reset') {
-						$wid = 'reset';
-					}
-					if (isset($info[1]) && $info[1] !== 'reset') {
-						$name = $info[1];
-						$new = true;
-						$output = "TEEEEST8347489";
-					}
-				// initWorkspace($data,$wid = null, $new = false, $output = null,$name = '') {
-					initWorkspace($data,$wid,$new,$output,$name);
-				}
-				// sendReply($data,print_r($data,true));
-				return;
-			}
-		}
-
-// word spelling checking and correction
-		if (isset($data['content']) && ( startsWith(strtolower($data['content']),'.spell') || startsWith(strtolower($data['content']),'.spellcheck'))) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$message = explode(' ',strtolower($data['content']));
-				$command = $message[0];
-				if (!isset($message[1])) {
-					$output = "Command usage: ``.$command <word>``";
-					sendReply($data, $output);
-					return;
-				}
-				array_shift($message);
-				$query = implode(' ',$message);
-				$result = spellCheck($query,true);
-				// var_dump("spellcheck",$result);
-				sendReply($data, $result);
-			}
-		}
-
-// word defining and auto-correct		
-		if (isset($data['content']) && ( startsWith(strtolower($data['content']),'.define'))) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$message = explode(' ',strtolower($data['content']));
-				$command = $message[0];
-				if (!isset($message[1])) {
-					$output = "Command usage: ``.define <word>``";
-					sendReply($data, $output);
-					return;
-				}
-				array_shift($message);
-				$query = implode(' ',$message);
-				$res = json_decode(curl("https://api.dictionaryapi.dev/api/v2/entries/en/$query")['content'],true)[0];
-				if ($res == NULL) {
-					if (!$res = spellCheck($query,'array')) {
-						sendReply($data, "Could not find **$query**!");
-						return;
-					}
-					$res = json_decode(curl("https://api.dictionaryapi.dev/api/v2/entries/en/$res")['content'],true)[0];
-					if ($res == NULL) {
-						sendReply($data, "Could not find **$query**!");
-						return;
-					}
-				}
-				$word = $res['word'];
-				$phonetic = $res['phonetic'];
-				if ($phonetic) $phonetic = " **($phonetic)**";
-				$definitions = niceList(numberfy_array(array_column($res['meanings'][0]['definitions'],'definition')),'','or').".";
-				$result = "**".ucfirst($word)."**$phonetic, a word here which means $definitions";
-				sendReply($data, $result);
-			}
-		}
-		
-		// $kodichans = ['1274001261976354886','1320107722393522207'];
-		$kodichans = ['1370142425292738673'];
-
-// emergency stop for player status refresher
-		if ($author == '380675774794956800' && isset($data['content']) && $data['content'] == '.stoploop' ) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				global $stopLoop;
-				$stopLoop = !$stopLoop;
-				sendReply($data, print_r($stopLoop,true));
-			}
-		}
-		
-// stub for testing purposes
-		if ($author == '380675774794956800' && isset($data['content']) && startsWith(strtolower($data['content']), '.testing')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				// $channel = getChannel('1274001261976354886');
-				// $channel = getChannel($data); // 1274001261976354886
-				return;
-
-				//$vidtimes = 
-				// $lastStatusPlayer[0] = $vidtimes[0];
-				// $lastStatusPlayer[2] = $vidtimes[1];
-				// $lastStatusPlayer[3] = $vidtimes[2];
-				// $lastStatusPlayer[4] = $vidtimes[3];
-				// global $lastStatusPlayer; list($lastStatusPlayer[0],$lastStatusPlayer[2],$lastStatusPlayer[3],$lastStatusPlayer[4]) = getVidTimes(); $msg = playerStatus('useArray');
-				// $msg = print_r($msg,true);
-				// $msg .= "\n".print_r($lastStatusPlayer,true);
-				// $msg .= "\n".print_r(playerStatus('useArray'),true);
-				
-				$msg = fruityLooper();
-				$msg = print_r($msg,true);
-				sendReply($data, $msg);
-
-				return;
-
-				$args = explode(' ',trim($data['content']));
-				$cmd = ltrim(array_shift($args),'.');
-				$arg  = implode(' ',$args);
-
-				preg_match(
-				"/(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtu\.be\/|youtube\.com\/(?:(?:watch)?\?(?:\S*&)?vi?=|(?:embed|v|vi|user|shorts)\/))([^?&\"'>\s]+)/",
-				$arg,$matches);
-				if (isset($matches[1])) {
-					$vid = $matches[1];
-				} else {
-					$output = 'video id error';
-					sendReply($data, $arg." ".$output);
-					return;
-				}
-
-
-
-
-				sendReply($data, print_r($matches,true)."|".$arg);
-				$vid = escapeshellarg($vid);
-				shell_exec("php /home/shayne/vbot/crystalbot/fetchmp3.php '$vid' > /dev/null 2>/dev/null &");
-				sendReply($data, $vid);
-				
-				return;
-				
-				global $kodi;
-				file_put_contents('kodivar.json',json_encode($kodi, JSON_PRETTY_PRINT));
-				return;
-				
-				$channel = $discord->getChannel('1274001261976354886');
-				$members = array_keys($channel->members);
-				$invc = ($author == '380675774794956800' || in_array($author,$members));
-				var_dump($cmd,$arg,$author,$invc);
-				
-				
-				file_put_contents('voice_debug.json',json_encode($members,JSON_PRETTY_PRINT).json_encode($channel,JSON_PRETTY_PRINT));
-
-// $builder = MessageBuilder::new();
-// Now we create an actionRow instance
-
-
-// $select = SelectMenu::new()
-	// ->addOption(Option::new('me?'))
-	// ->addOption(Option::new('or me?'));
-
-// $component = SelectMenu::new();
-// $builder->addComponent($component);
-
-
-// $action = ActionRow::new();
-// // Let's create the button
-// $button = Button::new(Button::STYLE_PRIMARY)->setLabel('Click me!')->setListener(function (Interaction $interaction) {
-// // CODE...
-// $interaction->respondWithMessage(MessageBuilder::new()->setContent("{$interaction->user} You clicked the button!"));
-// }, $discord);
-// $channel->sendMessage($builder)->then(function (Message $message) {
-// echo "Message sent in the channel {$message->channel->id}";
-// });
-
-				// sendReply($data, json_encode($channel,JSON_PRETTY_PRINT));
-				// $channel->sendMessage(MessageBuilder::new()
-						// ->setContent('Hello, world!'));
-						return;
-					global $_Kodi;
-
-
-$json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["audiostreams","currentaudiostream"]],"id":9}';
-					$msg = json_encode($_Kodi->sendJson($json),JSON_PRETTY_PRINT);
-
-				sendReply($data, $msg);
-				
-				return;
-
-
-					$getPlayerItem = $_Kodi->getPlayerItem();
-					$msg = json_encode($getPlayerItem,JSON_PRETTY_PRINT);
-					$getPlayerItem = $_Kodi->getPlayerItem(1);
-					$msg .= json_encode($getPlayerItem,JSON_PRETTY_PRINT);
-				$channel = getChannel($data);
-				$channel->sendMessage(MessageBuilder::new()
-						->setContent('Hello, world!'));
-			}
-		}				
-
-// Chatbot initiatior
-		if (isset($data['content']) && $author !== $GLOBALS['otherID'] && $author !== $GLOBALS['myID'] && ( strpos($data['content'],"<@".$GLOBALS['myID']."> ") !== false && strpos($data['content'],"<@".$GLOBALS['myID']."> ") >= 0 &&  strpos($data['content'],"<@".$GLOBALS['myID']."> ") < 3)) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				
-				//return;
-				$args = explode(' ',trim($data['content']));
-				var_dump($args,'df8df8d8f78sdf',strpos($data['content'],"<@".$GLOBALS['myID']."> "));
-				$cmd = ltrim(array_shift($args),'.');
-				$arg  = implode(' ',$args);
-
-				$msg = chatBot($arg,$author);
-				if (is_array($msg)) {
-					
-					foreach ($msg AS $k => $ms) {
-						sendReply($data, $ms);
-					}
-					
-					
-				} else {
-					sendReply($data, $msg);
-				}
-				return;
-			}
-		}
-
-// kodi controls		
-		if (isset($data['content']) && strtolower($data['content']) === '.showlist') {
-			if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
-				$msg = kodi('showlist',null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.playpause') {
-			if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
-				$msg = kodi();
-				sendReply($data, $msg);
-				return;
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.playall') {
-			if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
-				$msg = kodi('playall');
-				sendReply($data, $msg);
-				return;
-			}
-		}
-		if (isset($data['content']) && strtolower($data['content']) === '.previous') {
-			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi('previous',null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.kodiaudio') {
-			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi('audiostream',null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && (strtolower($data['content']) === '.bookmarks' || startsWith(strtolower($data['content']),'.bookmark') || startsWith(strtolower($data['content']),'.unbookmark') || startsWith(strtolower($data['content']),'.resume'))) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$cmds = ['bookmark','unbookmark','bookmarks','resume'];
-				$cmdargs = ['unbookmark','resume'];
-				$args = explode(' ',$data['content']);
-				
-				var_dump($args);
-				$cmd = ltrim(array_shift($args),'.');
-				$arg  = implode(' ',$args);
-				var_dump($cmd);
-				if (!in_array($cmd,$cmds)) {
-					return;
-				}
-				if (($cmd == 'bookmark' && !empty($arg) && !is_numeric($arg)) || (in_array($cmd,$cmdargs) && (empty($arg) || !is_numeric($arg)))) {
-					sendReply($data, "tp436: invalid selection");
-					return;
-				}
-				
-				$channel = $discord->getChannel('1274001261976354886');
-				$members = $channel->members;
-				// var_dump($members);
-				$members = json_decode(json_encode($members),true);
-				var_dump($members);
-				$members = array_keys($members);
-				var_dump($members);
-				// $invc = in_array($author,$members);
-				$invc = ($author == '380675774794956800' || in_array($author,$members));
-				$args = [$arg,$author,$invc];
-				
-				$msg = kodi($cmd,$args,$data);
-				sendReply($data, $msg);
-				return;
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.next') {
-			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi('next',null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower(trim($data['content'])) === '.kodi') {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				// initWorkspace($data,$wid = null, $new = false, $output = null,$name = '') {
-				initWorkspace($data,'reset',false,kodi('sources',null,"returnarray"));
-				initWorkspace($data,'reset',false,kodi('seek'),'player');
-				//sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.back') {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi("back",null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.stop') {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi("stop");
-				sendReply($data, $msg);
-			}
-		}
-
-		if ($author == '380675774794956800' && isset($data['content']) && strtolower($data['content']) === '.showhist') {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi("showhist");
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.movies') {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi("movies",null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.shows') {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi("shows",null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.sources') {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$msg = kodi("sources",null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.playlist')) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				// $arg  = ['time',["+25 seconds"]];
-				$msg = kodi("getplaylist",null,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.skipintro')) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$arg  = ['time',["+25 seconds"]];
-				$msg = kodi("seek",$arg,$data);
-
-			}
-		}
-		
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.seek')) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) )) {
-				$args = explode(' ',$data['content']);
-				
-				if (isset($args[1])) {
-					array_shift($args);
-					$args = implode(' ',$args);
-					$regex = '/[+,-]?[0-9:]+\s[a-z,A-Z]+/';
-					
-					if (preg_match($regex,$args,$matches)) {
-						// $arg  = intval($args[1]);
-						$arg  = ['time',$matches];
-						var_dump($matches);
-					} else if ( preg_match('/[0-9]+%/',$args,$matches)) {
-						$arg  = ['pcnt',intval($args)];
-						var_dump($matches);
-					} else {
-						sendReply($data, "invalid entry");
-						return;
-					}
-				} else {
-					$arg = ['show',null];
-				}
-				// $args[1];
-				if (!in_array($data['channel_id'],$kodichans) && $arg[0] !== 'show') {
-					return;
-				}
-				// $arg  = intval($args[1]);
-				$msg = kodi("seek",$arg,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && (startsWith(strtolower($data['content']),'.playfrom') || startsWith(strtolower($data['content']),'.queuefrom') || startsWith(strtolower($data['content']),'.queue') || startsWith(strtolower($data['content']),'.unqueue'))) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$args = explode(' ',$data['content']);
-				// if (trim($args[1]) == 'random') {
-					// $arg = 'random';
-				// } else {
-				$arg = null;
-				$qp = 'queue';
-				$un = $from = '';
-				if (isset($args[0]) && $args[0] == '.playfrom') {
-					$qp = 'play';
-					$from = 'from';
-					global $kodi;
-					
-					if (!isset($args[1]) || !is_numeric($args[1])	|| !$sel = intval($args[1]) || !isset($kodi['menu'][$sel]) 
-						|| !isset($kodi['menu'][$sel][0]) || !isset($kodi['menu'][$sel+1]) || $kodi['menu'][$sel][0] !== 'file') {
-						sendReply($data, '5756z: invalid selection');
-						return;
-					}
-					$arg  = intval($args[1]);
-					// kodi('stop','',$data);
-					//kodi('unqueue','all',null);
-					kodi('select',$arg,null);
-					usleep(900000);
-					kodi('queuefrom',$arg+1,$data);
-					return;
-					
-				} else if (isset($args[0]) && $args[0] == '.unqueue') {
-					if (!isset($args[1])) {
-						sendReply($data, '756k: invalid selection');
-						return;
-					}
-					// $from = 'from';
-					$un = 'un';
-					if ($args[1] == 'all') {
-						$arg = 'all';
-					} else {						
-						$arg  = intval($args[1]);
-					}
-				} else if (isset($args[0]) && $args[0] == '.queuefrom') {
-					if (!isset($args[1])) {
-						sendReply($data, '1948s: invalid selection');
-						return;
-					}
-					$from = 'from';
-					$arg  = intval($args[1]);
-				} else if (isset($args[1])) {
-					if ($args[1] == 'all') {
-						$arg = 'all';
-					} else if ($args[1] == 'clear') {
-						$arg = 'clear';
-					} else {
-						$arg  = intval($args[1]);
-					}
-				}
-				
-				$msg = kodi($un.$qp.$from,$arg,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-		if (isset($data['content']) && (startsWith(strtolower($data['content']),'.select') || startsWith(strtolower($data['content']),'.play') || startsWith(strtolower($data['content']),'.continue'))) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-
-				$cmds = ['play','continue','select'];
-				//$cmdargs = ['unbookmark','resume'];
-				$args = explode(' ',$data['content']);
-				
-				var_dump($args);
-				$cmd = ltrim(array_shift($args),'.');
-				$arg  = trim(implode(' ',$args));
-				if (!$arg && $arg !== "0") {
-					sendReply($data, "8968e: Invalid selection `$arg`");
-					return;
-				}
-				
-				var_dump($cmd);
-				if (!in_array($cmd,$cmds)) {
-					return;
-				}
-				//if ($cmd == 'play') { $cmd = 'select'; }
-
-				// $args = explode(' ',$data['content']);
-				if ($arg == 'random') {
-					$arg = 'random';
-				} else {
-					$arg  = intval($arg);
-				}
-				
-				$msg = kodi($cmd,$arg,$data);
-				sendReply($data, $msg);
-				return;
-			}
-		}
-
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.yt')) {
-			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
-				$ytcmds = ['ytplay','ytsearch','ytp','yts'];
-				$args = explode(' ',$data['content']);
-				
-				var_dump($args);
-				$ytcmd = ltrim(array_shift($args),'.');
-				var_dump($ytcmd);
-				if (!in_array($ytcmd,$ytcmds)) {
-					return;
-				}
-				
-				$arg  = implode(' ',$args);
-				
-				$msg = kodi($ytcmd,$arg,$data);
-				sendReply($data, $msg);
-			}
-		}
-
-// Youtube download
-		if (isset($data['content']) && startsWith(strtolower($data['content']), '.dlyt ')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-
-				$args = explode(' ',trim($data['content']));
-				$cmd = ltrim(array_shift($args),'.');
-				$arg  = implode(' ',$args);
-
-				preg_match(
-				"/(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtu\.be\/|youtube\.com\/(?:(?:watch)?\?(?:\S*&)?vi?=|(?:embed|v|vi|user|shorts)\/))([^?&\"'>\s]+)/",
-				$arg,$matches);
-				if (isset($matches[1]) && validVideoId($matches[1])) {
-					$vid = $matches[1];
-				} else {
-					$output = 'video id error';
-					sendReply($data, $arg." ".$output);
-					return;
-				}
-
-				$escauthor = escapeshellarg($author);
-				$vid = escapeshellarg($vid);
-				sendReply('380675774794956800', "$escauthor $vid");
-				chdir("/home/shayne/vbot/crystalbot/");
-				
-				shell_exec("php /home/shayne/vbot/crystalbot/fetchmp3.php '$vid' '$escauthor' >> fetchmp3.log 2>> fetchmp3.log &");
-				// sendReply($data, $vid);
-
-				// $msg = youtubedl($arg);
-				sendReply($data, "Processing your request. Please hold...");
-				return;
-			}
-		}
-
-// Initiate DM with user (fix for discord DM glitch)
-		if (!$dmMode && isset($data['content']) && strtolower($data['content']) === '.juiceme') {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				sendReply($data, "https://tenor.com/view/alone-gif-8541857");
-				sendMsg($author,"I am a kitty cat and I dance dance dance!");
-				return;
-			}
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.fortune') {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$fortune = new Fortune();
-				@$msg = $fortune->QuoteFromDir("fortune_data/");
-				// $content = nl2br($msg);
-				// print_r($data['author']['id'].'----------------------------------------------------');
-				$content = str_replace(array("<br />", "<br/>", "<br>"), "\n", $msg);
-				$remove = array("\r", "<p>", "</p>", "<h1>", "</h1>");
-				$msg = str_replace($remove, ' ', $content);
-				sendReply($data, $msg);
-				// sendMsg('362816681837592586', $msg);
-			}
-		}
-
-		if (isset($data['content']) && ( strtolower($data['content']) === '.headpats' || strtolower($data['content']) === '.pet' || strtolower($data['content']) === '.joy' || strtolower($data['content']) === '.givepets')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				sendReply($data, "https://www.crystalshouts.com/grahaears.gif");
-				return;
-			}
-		}
-
-		if (isset($data['content']) && ( strtolower($data['content']) === '.dance' || strtolower($data['content']) === '.shimmy')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				sendReply($data, "https://www.eorzeanshouts.com/grahashimmy.gif");
-				return;
-			}
-		}
-
-		if (isset($data['content']) && ( strtolower($data['content']) === '.feedthetia' || strtolower($data['content']) === '.givetaco' || strtolower($data['content']) === '.feedgraha')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$user = getUser($author);
-				sendReply($data, "https://www.crystalshouts.com/graha.gif \nOm nom nom!");
-				return;
-			}
-		}
-
-		if (isset($data['content']) && isset($data['channel_id']) && $data['channel_id'] == '1144019282376802425') {
-			$barding = file_get_contents('barding.ch');
-			if ($barding === false) { $barding = ''; }
-			$barding .= json_encode($data);
-			file_put_contents('barding.ch',$barding);
-		}
-
-		if (isset($data['content']) && strtolower($data['content']) === '.poke') {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				// $user = getUser($author);
-				sendReply($data, "https://www.crystalshouts.com/grahatu.gif");
-			}
-		}
-
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.tzconvert')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$user = getUser($author);
-				$tz = explode(' ',str_ireplace(' AM  ','AM ',str_replace(' PM ','PM ',str_replace('  ',' ',str_ireplace(['to ','.tzconvert '],'',strtoupper($data['content']))))));
-				if (count($tz) < 3) {
-					$time = $tz[0];
-					$fromtz= $user['timezone'];
-					$totz = $tz[1];
-				} else {
-					$time = $tz[0];
-					$fromtz = $tz[1];
-					$totz = $tz[2];
-				}
-
-
-				// if (!$fromtz = explode(' ',$tz[0])[1]) {
-					// $tz[0] = $user['timezone'];
-				// } else {
-					// $tz[0] = $fromtz;
-				// }
-			
-				// $fromtz = $tz[0];
-			
-					// $totz = $user['timezone'];
-				// } else {
-					// $totz = $tz[1];
-				// }
-				if (!date_default_timezone_set($totz)) {
-					// date_default_timezone_set($user['timezone']);
-					date_default_timezone_set( timezone_name_from_abbr($totz));						
-				}
-				
-				sendReply($data,  print_r($tz,true)."$time $fromtz is ".date('h:i A',strtotime($time.' '.$fromtz))." $totz");
-			}
-		}
-
-		if (isset($data['content']) && ( strtolower($data['content']) === 'hello computer' || strtolower($data['content']) === '.help')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$output = getUser($author);
-				$defaulteurl = "(None)";
-				if ($output['status'] && $output['defaulteurl'] != '') {
-					$defaulteurl = $output['defaulteurl'];
-				}
-				$message = "Use '{blank}' to set a blank value. eg: `.shoutmsg <my-venue-eurl> {blank}`\nGet twitch url: `.twitch <eurl>` or set twitch url: `.twitch <eurl> twitch url`\nGet shout message: `.shoutmsg <eurl>` or  set shout message: `.shoutmsg <eurl> shout message` (discord formatting **will** work, too!)\nRandom fortune cookie message: `.fortune`\n
-										Create a new post with `.new Post Title`. Default eurl will switch to new post. You can modify the default eurl with `.default <eurl>`\n
-										Your current default eurl is: $defaulteurl\n
-										List posts you own with `.myposts`, New posts: `.newposts`, Posts open today: `.opentoday`, and search for posts with `.search`\n
-										You can modify your posts with commands such as:\n
-										`.addpics`, `.application`, `.validate`, `.site`, `.discord`, `.stream`, `.instagram`,`.twitter`, `.shoutmsg`, `.desc`, `.tags`, and `.note`
-										";
-
-				sendReply($data, $message);
-			}
-		}
-
-		if (isset($data['content']) && (strtolower($data['content']) === '.botprod' || strtolower($data['content']) === '.botproud' || strtolower($data['content']) === '.pushprod')) {
-			if ($author == '380675774794956800') {
-				sendReply($data, "Pushing Dev Changes....");
-				shell_exec("cd /home/shayne/vbot/crystalbot/ && cp csbot.php csbot.php.bak && cp csbot-dev.php csbot.php");
-				sleep(1);
-				sendReply($data, ".reset");
-				if ($GLOBALS['filePrefix'] != 'DEV-') { $data['content'] = '.reset'; }
-				// sendReply($data,"Rebooting...");
-				// $discord->close();
-				// exit;
-			} else { sendReply('380675774794956800', "bad auth from $author <@$author>"); sendReply($data,"https://www.crystalshouts.com/noauth.jpg");	}
-		}
-
-		if (isset($data['content']) && (strtolower($data['content']) === '.reboot' || strtolower($data['content']) === '.reset')) {
-			if ($author == '380675774794956800') {// || $author = $GLOBALS['otherID']) {
-				$channelid = $data['channel_id'];
-				$guildid = $data['guild_id'];
-				if ($dmMode == 1) { 
-					$guildid = "DM"; $channelid = $author; 
-					shell_exec("php /home/shayne/vbot/crystalbot/sendmsg.php ".$GLOBALS['filePrefix']."$author Restarting... &");
-				} else {
-					shell_exec("php /home/shayne/vbot/crystalbot/sendmsg.php ".$GLOBALS['filePrefix'].$guildid."#".$channelid." Restarting... &");
-				}
-				if (isset($channelid)) { $channelid = $guildid.':'.$data['channel_id']; } 
-				file_put_contents($GLOBALS['filePrefix'].'lastchan',$channelid);
-				sendReply($data, "Restarting...");
-				sleep(3);
-				// sendReply($data,"Rebooting...");
-				// $discord->close();
-				exit;
-			} else { sendReply('380675774794956800', "bad auth from $author <@$author>"); sendReply($data,"https://www.crystalshouts.com/noauth.jpg");	}
-		}
-
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.happydance')) {
-			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
-				$hdances = [
-					"https://www.crystalshouts.com/happydance.gif",
-					"https://www.crystalshouts.com/startrek-dance.gif",
-					"https://www.eorzeanshouts.com/grahashimmy.gif",
-					"https://c.tenor.com/LHKzT8b-tfcAAAAj/%D8%B5%D8%A8%D9%8A%D9%8A%D8%B4%D8%B7%D8%AD-dance.gif",
-					"https://c.tenor.com/2vqE2AJ-6ngAAAAC/woo-seinfeld.gif",
-					"https://c.tenor.com/xd2_RUy41sAAAAAC/cute-cat.gif",
-					"https://c.tenor.com/2pGUcoYwuhMAAAAC/happy-birthday.gif",
-					"https://c.tenor.com/pXnGfrFQgF8AAAAC/dance-emoji.gif"
-				];
-				sendReply($data, $hdances[array_rand($hdances, 1)]);
-			}
-		}
-		
-	});
-});
-
-$discord->run();
+	global $_Kodi;
+	$json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["audiostreams","currentaudiostream"]],"id":9}';
+	$props = $_Kodi->sendJson($json)['result'];
+	if (!$props) { return "props error";	}
+	if (isset($props['currentaudiostream']['language']) && $props['currentaudiostream']['language'] !== 'eng') {
+		$engstreams = filterArra
