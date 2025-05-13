@@ -1,0 +1,1154 @@
+yByKeyValue($props['audiostreams'],'language','eng');
+		if (!count($engstreams)) { return json_encode($props,JSON_PRETTY_PRINT)."\nno english streams found"	;	}
+		$aindex = $engstreams[array_keys($engstreams)[0]]['index'];
+		$json = '{"jsonrpc":"2.0","method":"Player.SetAudioStream","params":[1,'.intval($aindex).'],"id":10}';
+		$props = $_Kodi->sendJson($json)['result'];
+	}
+	return $props;
+}
+
+$bmmap = [];
+$fmap = [];
+$ytmap = [];
+
+function timeArrayToSecs($time) {
+	if (is_string($time) && trim($time) == "") { return 0; }
+	if (is_array($time)) {
+		if (isset($time['hours'])) {
+			unset($time['milliseconds']);
+			//$time = implode(':',$time))
+		}
+		$time = implode(':',array_map('padInt',$time));
+	}
+	$sec = 0;
+	var_dump($time);
+	if (is_string($time) && trim($time) == "") { return 0; }
+	foreach (array_reverse(explode(':', $time)) as $k => $v) $sec += pow(60, $k) * $v;
+	return $sec;
+}
+
+function renderBMS($did = false) {
+	if (!$did) { return "ERR:84-DID"; }
+	return renderDir(popBMMap($did,true),"bookmarks",kodiCurItem(),true);
+}
+
+function popBMMap($did,$array = false) {
+	global $bmmap;
+	$query = "SELECT * FROM bookmarks WHERE did=:did";
+	include('db.php');
+	$stmt = $dbconn->prepare($query);                
+	if (!$stmt->execute(['did' => $did])) {
+		var_dump("$did Data error 42");
+		return "Data error 42";
+	}
+
+	$bms = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+	if (!$bms) {
+		var_dump("$did has no bookmarks yet");
+		return "You have no bookmarks saved yet!";
+	}
+	//$did = $arg[1];
+	$results = "__**Bookmarks**__\n";
+
+	$ikey = 0;
+	$bmmap[$did] = [];
+	$dirs = [];
+	file_put_contents('bmsitems.json',json_encode($bms, JSON_PRETTY_PRINT));
+	foreach ($bms AS $key => $bm) {
+		$ikey++;
+		$id = $bm['id'];
+		$type = $bm['type'];
+		if (!$type) { $type = "file"; }
+		$n = $bm['name'];
+		$f = $bm['file'];
+		$dirTemplate = [];
+		// $t = json_decode($bm['time'],true);
+		// unset($t['milliseconds']);
+		$bmmap[$did][$ikey] = [$id,$f];
+		// $time = implode(':',array_map('padInt',$t));
+		$time = $ttime = '';
+		$position = $total = false;
+		if ($bm['time']) {
+			$t = json_decode($bm['time'],true);
+			unset($t['milliseconds']);
+			$time = implode(':',array_map('padInt',$t));
+			$position = timeArrayToSecs($t);
+		}
+		if ($bm['totaltime']) {
+			$tt = json_decode($bm['totaltime'],true);
+			unset($tt['milliseconds']);
+			$ttime = implode(':',array_map('padInt',$tt));
+			$total = timeArrayToSecs($tt);
+		}
+		if ($time && $ttime) {
+			$time = "$time / $ttime";
+		} else if ($ttime) {
+			$time = "00:00:00 / $ttime";
+		}
+		$bmmap[$did][$ikey] = [$id,$f];
+		$results .= "[$ikey]: $n $time \n";
+
+
+	$dirTemplate = [
+		"title"=> "",
+		"thumbnail"=> "",
+		"file"=> $f,
+		"filetype"=> $type,
+		"label"=> $n
+	];
+
+		if ($total) {
+			$dirTemplate['runtime'] = $total;
+			$dirTemplate['resume']['total'] = $position;
+		}
+		if ($position) {
+			$dirTemplate['resume']['position'] = $position;
+		}
+
+		$dirs[] = $dirTemplate;
+
+		// "resume": {
+				// "position": 2426.923328,
+				// "total": 2834.091
+		// },
+		// "runtime": 2834,
+		
+		
+		// $results .= "  $key [$ikey]: $n $time \n";
+		
+	}
+	file_put_contents('bmsdirs.json',json_encode($dirs, JSON_PRETTY_PRINT));
+	var_dump($bmmap[$did]);
+	if ($array) { return $dirs; }
+	return $results;	
+}
+
+function renderFAVS($did = false) {
+	if (!$did) { return "ERR:F84-DID"; }
+	return renderDir(popFMap($did,true),"favs",kodiCurItem(),true);
+}
+
+function popFMap($did,$array = false) {
+	global $fmap;
+	$query = "SELECT * FROM favs WHERE did=:did";
+	include('db.php');
+	$stmt = $dbconn->prepare($query);                
+	if (!$stmt->execute(['did' => $did])) {
+		var_dump("$did Data error f42");
+		return "Data error f42";
+	}
+
+	$fvs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+	if (!$fvs) {
+		var_dump("$did has no favorites yet");
+		return "You have no favourites saved yet!";
+	}
+	//$did = $arg[1];
+	$results = "__**Favourites**__\n";
+
+	$ikey = 0;
+	$bmmap[$did] = [];
+	$dirs = [];
+	file_put_contents('fmsitems.json',json_encode($fms, JSON_PRETTY_PRINT));
+	foreach ($fms AS $key => $fm) {
+		$ikey++;
+		$id = $fm['id'];
+		$type = $fm['type'];
+		if (!$type) { $type = "file"; }
+		$n = $fm['name'];
+		$f = $fm['file'];
+		$dirTemplate = [];
+		// $t = json_decode($bm['time'],true);
+		// unset($t['milliseconds']);
+		$fmap[$did][$ikey] = [$id,$f];
+		// $time = implode(':',array_map('padInt',$t));
+		$time = $ttime = '';
+		$position = $total = false;
+		if ($fm['time']) {
+			$t = json_decode($fm['time'],true);
+			unset($t['milliseconds']);
+			$time = implode(':',array_map('padInt',$t));
+			$position = timeArrayToSecs($t);
+		}
+		if ($fm['totaltime']) {
+			$tt = json_decode($bm['totaltime'],true);
+			unset($tt['milliseconds']);
+			$ttime = implode(':',array_map('padInt',$tt));
+			$total = timeArrayToSecs($tt);
+		}
+		if ($time && $ttime) {
+			$time = "$time / $ttime";
+		} else if ($ttime) {
+			$time = "00:00:00 / $ttime";
+		}
+		$bmmap[$did][$ikey] = [$id,$f];
+		$results .= "[$ikey]: $n $time \n";
+
+
+	$dirTemplate = [
+		"title"=> "",
+		"thumbnail"=> "",
+		"file"=> $f,
+		"filetype"=> $type,
+		"label"=> $n
+	];
+
+		if ($total) {
+			$dirTemplate['runtime'] = $total;
+			$dirTemplate['resume']['total'] = $position;
+		}
+		if ($position) {
+			$dirTemplate['resume']['position'] = $position;
+		}
+
+		$dirs[] = $dirTemplate;
+
+		// "resume": {
+				// "position": 2426.923328,
+				// "total": 2834.091
+		// },
+		// "runtime": 2834,
+		
+		
+		// $results .= "  $key [$ikey]: $n $time \n";
+		
+	}
+	file_put_contents('fsdirs.json',json_encode($dirs, JSON_PRETTY_PRINT));
+	var_dump($fmap[$did]);
+	if ($array) { return $dirs; }
+	return $results;	
+}
+
+function kodiCurItem($gettitle = false) {
+	global $_Kodi;
+	// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+	$json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+//	$json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","artist","file","mediapath"]],"id":10}';
+	$ftitle = $curitem = null;
+	$res = $_Kodi->sendJson($json);
+	var_dump($json,$res);
+	if ($res['result']) {
+		if ($gettitle) {
+			$item = $res['result']['item'];
+			$filename = $item['file'];
+			$file = false;
+			if (isset($item['mediapath'])) {
+				$file = $item['mediapath'];
+			}
+			if (!$file) { $file = $filename; }
+			$artist = [];
+			if (isset($item['artist'])) {
+				$artist = $item['artist'];
+			}
+			$title = $item['title'];
+			$name = $item['label'];
+			if (!$name) { $name = $title; }
+			if (!$name) { $name = $filename; }
+			$ftitle = kodiTitle($name,$artist,$file);
+		}// else {
+		if ($res['result']['item']['mediapath']) {
+			$curitem = $res['result']['item']['mediapath'];
+		} else {
+			$curitem = $res['result']['item']['file'];
+		}
+	}
+	if ($gettitle) {
+		$curitem = [$curitem,$ftitle];
+	}
+	return $curitem;
+	
+}
+
+$lastStatusData = [];
+$lastStatusPlayer = ["Stopped","","00:00:00","00:00:00",0,"",""];
+function playerStatus($status = false,$data = false) {
+	global $lastStatusData;
+	global $lastStatusPlayer;
+	var_dump('1 $lastStatusPlayer',$lastStatusPlayer,$data);
+	var_dump('1 $lastStatusData',$lastStatusData,$data);
+	if (!$data){
+		$data = $lastStatusData;
+	} else {
+		$lastStatusData =	$data;		
+	}
+	if (!$status) {
+		$status = kodi('seek',null);
+	} else if (is_array($status)) {
+		list($state,$play,$pcnt,$curtime,$endtime,$message) = $status;
+		// $state = $status[0];
+		// $play = $status[1];
+		// $pcnt = $status[2];
+		// $curtime = $status[3];
+		// $endtime = $status[4];
+		// $message = $status[5];
+		if ($message && !preg_match("/^(\s?)\n/",$message,$m)) { $message = "\n".$message; }
+		$lastStatusPlayer = $status;
+		// $status = "$play \n $pcnt% $curtime / $endtime $message";
+		//$lastStatusPlayer = [$state,$play,$pcnt,$curtime,$endtime];
+		$status = "[$state] $play \n $curtime / $endtime $pcnt% $message";
+		$lastStatusPlayer[6] = $status;
+	} else if (is_string($status) && $status == 'useArray') {
+		list($state,$play,$curtime,$endtime,$pcnt,$message) = $lastStatusPlayer;
+		if ($state !== "Stopped" && !$play) { $play = kodiCurItem(true)[1]; }
+		var_dump($state,$play);
+		if ($message && !preg_match("/^(\s?)\n/",$message,$m)) { $message = "\n".$message; }
+		$status = "[$state] $play \n $curtime / $endtime $pcnt% $message";
+	} else if (!is_string($status)) {
+		return "Status type error";
+	}
+	//function outputWorkspace($data,$output,$name = "") {
+	var_dump('2 $lastStatusPlayer',$lastStatusPlayer);
+	outputWorkspace($data,$status,'player');
+	return $lastStatusPlayer;
+}
+
+$resumeData = false;
+function kodi($action = "playPause",$arg = null,$data = false) {
+	global $_Kodi;
+	global $kodi;
+	global $lastStatusData;
+	global $curpath;
+	$array = $return = false;
+	$playlistMode = false;
+	$queuecmd = false;
+	if (is_string($data) && $data == 'return') {
+		$data = false;
+		$return = true;
+	} else if (is_string($data) && $data == 'returnarray') {
+		$array = true;
+		$data = false;
+		$return = true;
+	}
+	
+	if (is_array($data) && isset($data['channel_id']) && (!is_array($lastStatusData) || !isset($lastStatusData['channel_id'])) ) {
+		$lastStatusData = $data;
+	}
+	
+	// function getDir($path) {
+		// global $_Kodi;
+		// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+		// $dirs = $_Kodi->sendJson($json);
+	// }
+
+	if ($data !== false) {
+		file_put_contents('kodidata.json',json_encode($data, JSON_PRETTY_PRINT));		
+	}
+
+	$playlistMode = false;
+	if (is_string($action) && in_array($action,['next','prev','previous'])) {
+		$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"],"limits":{"start":0}}}';
+		$items = $_Kodi->sendJson($json);
+		var_dump('78243784784638956356934',$json,$items);
+		if (isset($_Kodi->error)) { 
+			return print_r($_Kodi->error,true);
+		}
+		
+		if (!isset($items['result']) || !isset($items['result']['items'])) {
+			var_dump($items,'queue render ERROR');
+			return "Query error 48".intval(!isset($items['result'])).intval(!isset($items['result']['items']));
+		}
+		if ($playlistMode = (count($items['result']['items']) > 1)) {
+			$json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["playlistid","position"]],"id":11}'; //,{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":12}';
+			$qindex = $_Kodi->sendJson($json)['result']['position'];
+			var_dump($qindex,"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+
+		}
+		
+	}
+	// return print_r($addq,true).print_r($output,true);
+	//$output = renderQueue($output,$curitem);
+
+
+
+	var_dump("KODI",$action,$arg);
+
+	if ($kodi['paths'] == null) {
+		// $json = '{"jsonrpc":"2.0","method":"Files.GetSources","params":["video"],"id":8},{"jsonrpc":"2.0","method":"Files.GetSources","params":["music"],"id":9}';
+		//$json = '{"jsonrpc":"2.0","method":"Files.GetSources","params":["video"],"id":8},{"jsonrpc":"2.0","method":"Files.GetSources","params":["music"],"id":9}';
+		$json = '{"jsonrpc":"2.0","method":"Files.GetSources","params":["video"],"id":1}'; //,{"jsonrpc":"2.0","method":"Files.GetSources","params":["music"],"id":2},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.audio","unknown",true,["path","name"]],"id":3},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.video","unknown",true,["path","name"]],"id":4}]';
+		$srcs = $_Kodi->sendJson($json);
+		var_dump($srcs);
+		
+		if (!isset($srcs['result'])) {
+			return "data error 1";
+		}
+		// $srcs = $_Kodi->sendJson(addslashes($json));
+		$kodi['sources'] = $srcs['result']['sources'];
+		$kodi['paths'] = [$srcs['result']['sources'][0]['file'],$srcs['result']['sources'][1]['file']];
+		// var_dump($srcs,$kodi['paths']);
+		// $kodi['paths'] = [];
+			// $path = $kodi['paths'][0];
+
+	}
+
+	$playcmd = false;
+	$output = '';
+	$addq = '';
+
+	switch ($action) {
+		case "audiostream":
+			$output = json_encode(fixKodiAudio());
+			$data = false;
+			$return = true;
+		break;
+
+
+		case "resume":
+			if (!$arg[2]) {
+				return "You must be in the tv room channel to do this!";
+			}
+			// return "Not yet";
+
+			$key = $arg[0];
+			$did = $arg[1];
+			global $bmmap;
+			if (!isset($bmmap[$did])) {
+				popBMMap($did);
+			}
+			
+			$id = $bmmap[$did][$key][0];
+
+			$query = "SELECT name,file,time,type FROM bookmarks WHERE did=:did AND id=:id";
+
+			include('db.php');
+			$stmt = $dbconn->prepare($query);                
+			if (!$stmt->execute(['id' => $id,'did' => $did])) {
+				return "Data error 42";
+			}
+
+			$bms = $stmt->fetch(PDO::FETCH_ASSOC);
+
+			if (!$bms) {
+				return "Bookmark for $key not found!";
+			}
+			$f = $bms['file'];
+			$type = $bms['type'];
+			if ($type == 'directory') {
+				$path = $f;
+				// $kodi['hist'][] = $path;
+				// $output = "\n$path\n";
+				$output = "\n";
+				// $dirs = $_Kodi->getDirectory(addcslashes($path,'\'), 1);
+				// $dirs = getDir($path)['result']['files'];
+				$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","runtime","resume","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+				$dirs = $_Kodi->sendJson($json);
+				file_put_contents('bmrdirs.json',json_encode($dirs, JSON_PRETTY_PRINT));
+				var_dump('$path $dirs',$path,$dirs,$json);
+
+				// $curitem = null;
+				// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","file","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+				// $res = $_Kodi->sendJson($json);
+				// if ($res['result'] && $res['result']['item']['file']) {
+					// $curitem = $res['result']['item']['file'];
+				// }
+
+				$output = renderDir($dirs,$path,kodiCurItem(),($data));
+
+
+			} else {
+
+				$_Kodi->stop();
+				usleep(1000000);
+				//usleep(2000000);
+
+				$play = $_Kodi->openFile(addcslashes($f,'\\'));
+				var_dump($play);
+				//usleep(1000000);
+				
+				$t = false;
+				if ($bms['time']) {
+					$t = json_decode($bms['time'],true);
+					// if ($t['minutes'] > 3) { $t['minutes'] = $t['minutes']-3; }
+
+					// $json = ["id"=>0,"jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1]];
+					// $json["params"][1] = ["time" => $t];
+					// var_dump($json);
+					// $seek = $_Kodi->sendJson(json_encode($json));
+					// var_dump($seek);
+					// usleep(1000000);
+				}
+				global $gseek;
+				$gseek = $t;
+			var_dump($bms,'00000000000000',$gseek);
+				$n = $bms['name'];
+				setVoiceStatus("Playing $n");
+
+
+
+				return false;
+	}
+		break;
+		case "bookmark":
+			$did = $arg[1];
+			global $bmmap;
+			if (!isset($bmmap[$did])) {
+				popBMMap($did);
+			}
+			if (count($bmmap[$did]) > 9) {
+				return "Maximum number of bookmarks saved. Please remove one before adding another";
+			}
+			
+			$key = $arg[0];
+			if (!$key) {
+				if (!$arg[2]) {
+					return "You must be in the tv room channel to do this!";
+				}
+				$type = 'file';
+				// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+				$json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","resume","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+				$res = $_Kodi->sendJson($json);
+				file_put_contents('bookmark5435.json',json_encode($res, JSON_PRETTY_PRINT));
+				if ($res['result'] && isset($res['result']['item']['file'])) {
+					$filename = $res['result']['item']['file'];
+					$file = $res['result']['item']['mediapath'];
+					$artist = $res['result']['item']['artist'];
+					$title = $res['result']['item']['title'];
+					$name = $res['result']['item']['label'];
+					if (!$name) { $name = $title; }
+					if (!$name) { $name = $filename; }
+					if (count($artist)) {
+						$artist = $artist[0];
+						if ($artist) {
+							$name = $artist.$name;
+						}
+					}
+				} else {
+					return "Data error 420";
+				}
+				if (!isset($res['result']['item']['file'])) {
+					return "Nothing is currently playing";
+				}
+				
+				$json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["playlistid","speed","position","totaltime","time","percentage","shuffled","repeat","canrepeat","canshuffle","canseek","partymode"]],"id":11}'; //,{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":12}';
+				$props = $_Kodi->sendJson($json)['result'];
+				if (!isset($props['time'])) {
+					return "Data error 960";
+				}
+				$time = json_encode($props['time']);
+				$totaltime = json_encode($props['totaltime']);
+			} else {
+				if (!isset($kodi['menu'][$key])) {
+					return "7890f80: Invalid selection: $arg";			
+				}
+// $kodi['menu'][$key] = [$type,$path,$watchedbool,$name];
+				$sel = $kodi['menu'][$key];
+				$name = $sel[3];
+				$file = $sel[1];
+				$type = $sel[0];
+				$totaltime = $sel[5];
+				if (count(array_filter($bmmap[$did], fn($val) => $val[1] == $file ))) {
+					return "$name already in your bookmarks!";
+				}
+				$time = false;
+			}
+				
+			include('db.php');
+
+			$query = "INSERT INTO `bookmarks` (`did`,`name`,`file`,`time`,`totaltime`,`type`) VALUES (:did,:name,:file,:time,:totaltime,:type) RETURNING id;";
+
+			$qd = [
+			'did' => $did,
+			'name' => $name,
+			'file' => $file,
+			'time' => $time,
+			'totaltime' => $totaltime,
+			'type' => $type
+			];
+			
+			$stmt = $dbconn->prepare($query);                
+			if ($stmt->execute($qd)) {
+				$id = $stmt->fetch(PDO::FETCH_ASSOC)['id'];
+				var_dump("-----------ID-----------",$id);
+				$key = intval(array_key_last($bmmap[$did]));
+				while (isset($bmmap[$did][$key]) && $key < 200) {
+					$key++;
+				}
+				$bmmap[$did][$key] = [$id,$file];
+				var_dump($bmmap[$did]);
+				return "Bookmark added!";
+			} else {
+				return "Data error 4096";
+			}
+		break;
+		case "unbookmark":
+
+			//$id = array_search(56,$blah);
+			$key = $arg[0];
+			$did = $arg[1];
+			global $bmmap;
+			if (!isset($bmmap[$did])) {
+				popBMMap($did);
+			}
+
+			if (!isset($bmmap[$did][$key])) {
+				return "Bookmark for $key not found";
+			}
+
+			$id = $bmmap[$did][$key][0];
+
+			include('db.php');
+			$stmt = $dbconn->prepare("DELETE FROM bookmarks WHERE id=:id AND `did`=:did");
+			if ($stmt->execute(['did' => $did,'id'=>$id])) {
+				$arr = array_filter($bmmap[$did], fn($val) => $val[0] !== $id);
+				array_unshift($arr,"");
+				$bmmap[$did] = array_values($arr);
+				unset($bmmap[$did][0]);
+				return "Bookmark removed!";
+			} else {
+				return "Data error 8192";
+			}
+		break;
+		case "bookmarks":
+			$query = "SELECT * FROM bookmarks WHERE did=:did";
+			$did = $arg[1];
+
+			include('db.php');
+			$stmt = $dbconn->prepare($query);                
+			if (!$stmt->execute(['did' => $did])) {
+				return "Data error 42";
+			}
+
+			$bms = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+			if (!$bms) {
+				return "You have no bookmarks yet";
+			}
+			// $results = "__**Bookmarks**__\n";
+			// $ikey = 0;
+			// $bmmap[$did] = [];
+			// var_dump($bms);
+			// foreach ($bms AS $key => $bm) {
+				// $ikey++;
+				// $id = $bm['id'];
+				// $f = $bm['file'];
+				// $n = $bm['name'];
+				// $time = '';
+				// if ($bm['time']) {
+					// $t = json_decode($bm['time'],true);
+					// unset($t['milliseconds']);
+					// $time = "at ".implode(':',array_map('padInt',$t));
+				// }
+				// $bmmap[$did][$ikey] = [$id,$f];
+				// $results .= "[$ikey]: $n $time \n";
+			//}
+						var_dump($bms,'00000000000000');
+
+			$dirs = popBMMap($did,true);
+			$output = renderDir($dirs,"bookmarks",kodiCurItem(),($data || $array));
+			// var_dump($results,$did);
+			var_dump($dirs,$output,$did);
+			// return $results;
+		break;
+		case "btn":
+			// $json = '[{"jsonrpc":"2.0","method":"Playlist.Remove","params":[1,'.intval($arg).'],"id":112}]';
+			$btnaction = '';
+			if (is_string($arg) && in_array($arg,['play','pause'])) {
+				$btnaction = $arg;
+				global $resumeData;
+				if ($btnaction == "play" && $resumeData && getVidTimes()[0] == "Playing") {
+					global $lastStatusPlayer;
+					kodi('seek',['abs',$resumeData]);
+					$lastStatusPlayer[5] = "";
+					$resumeData = false;
+					playerStatus('useArray');
+					return;
+				}
+				$json = '[{"jsonrpc":"2.0","method":"Input.ExecuteAction","params":["'.$btnaction.'"],"id":31}]';
+				$output = $_Kodi->sendJson($json);
+				var_dump($output);
+			}
+			// $arg = null;
+		break;
+		case "osd":
+			// $json = '[{"jsonrpc":"2.0","method":"Playlist.Remove","params":[1,'.intval($arg).'],"id":112}]';
+			$json = '[{"jsonrpc":"2.0","method":"Input.ExecuteAction","params":["osd"],"id":31}]';
+			$output = $_Kodi->sendJson($json);
+			var_dump($output);
+			// $arg = null;
+		break;
+		case "unqueue":
+			if ($arg == 'all') {
+				$arg = 'clear';
+			} else {
+				$json = '[{"jsonrpc":"2.0","method":"Playlist.Remove","params":[1,'.intval($arg).'],"id":112}]';
+				$unq = $_Kodi->sendJson($json);
+				var_dump($unq);
+				$arg = null;
+			// break;
+			}
+		case "queuefrom":
+			if (is_numeric($arg)) {
+				$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"],"limits":{"start":0}}}';
+				$inum = count($output = $_Kodi->sendJson($json)['result']['items']);
+				$start = intval($arg);
+				foreach ($kodi['menu'] AS $arg => $selection) {
+					if (intval($arg) < $start) { continue; }
+					
+					$selection = $kodi['menu'][$arg];
+					if ($selection[0] == 'file') {
+						$file = $selection[1];
+					} else {
+						var_dump("selection is not a file",$arg,$selection);
+						continue;
+					}
+					var_dump('FOOOOOOOOOOOO FROMM          00000000000000000',$inum,$json,$output);
+
+
+					$json = '[{"jsonrpc":"2.0","method":"Playlist.Insert","params":[1,'.intval($inum).',{"file":"'.addcslashes($file,'\\').'"}],"id":2209}]';
+					$inum++;
+					var_dump('FOOOOOOOOOOOO13333333333333333333333',$inum,$json);
+					$addq = $_Kodi->sendJson($json);
+					var_dump($addq);
+				}
+				$arg = null;
+			// } else {
+				// return "Invalid selection";
+			}
+		case "queue":
+			// return $curitem;
+		
+			if ($arg !== null) {
+				// if (count($res = filterArrayByKeyValue($kodi['menu'],2,false))) {
+					// $arg = array_rand($res);
+				// } else {
+					// $arg = rand(0,count($kodi['menu'])-1);
+				// }
+				
+				// if ($arg == 'remove') {
+				if ($arg == 'clear') {
+						$json = '{"jsonrpc":"2.0","method":"Playlist.Clear","params":[1],"id":16}';
+						$clearq = $_Kodi->sendJson($json);
+						var_dump($clearq);
+						if ($data === null) {
+							return;
+						}
+
+						if (!count($kodi['hist'])) {
+							$path = $kodi['paths'][0];
+						} else {
+							$path = array_pop($kodi['hist']);
+						}
+						$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+						$dirs = $_Kodi->sendJson($json);
+						var_dump($dirs);
+
+						$curitem = null;
+						$json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","mediapath","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+						$res = $_Kodi->sendJson($json);
+						if ($res['result']) {
+							$curitem = $res['result']['item']['file'];
+						}
+
+						$output = renderDir($dirs,$path,$curitem,($data));
+						break;
+					
+				} else if ($arg == 'all') {
+					
+					$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"],"limits":{"start":0}}}';
+					$inum = count($output = $_Kodi->sendJson($json)['result']['items']);
+					foreach ($kodi['menu'] AS $arg => $selection) {
+						
+						
+						$selection = $kodi['menu'][$arg];
+						if ($selection[0] == 'file') {
+							$file = $selection[1];
+						} else {
+							var_dump("selection is not a file",$arg,$selection);
+							continue;
+						}
+						var_dump('FOOOOOOOOOOOO ALLL00000000000000000',$inum,$json,$output);
+
+
+						$json = '[{"jsonrpc":"2.0","method":"Playlist.Insert","params":[1,'.intval($inum).',{"file":"'.addcslashes($file,'\\').'"}],"id":2209}]';
+						$inum++;
+						var_dump('FOOOOOOOOOOOO111111111111111111111',$inum,$json);
+						$addq = $_Kodi->sendJson($json);
+						var_dump($addq);
+					}
+					
+					
+				} else {
+					if (!isset($kodi['menu'][$arg])) {
+						return "9fa78: Invalid selection: $arg";			
+					}
+					$selection = $kodi['menu'][$arg];
+					if ($selection[0] == 'file') {
+						$file = $selection[1];
+					} else {
+						return "selection is not a file";
+					}
+					$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"],"limits":{"start":0}}}';
+					$inum = count($output = $_Kodi->sendJson($json)['result']['items']);
+					var_dump('FOOOOOOOOOOOO',$inum,$json,$output);
+
+
+					$json = '[{"jsonrpc":"2.0","method":"Playlist.Insert","params":[1,'.intval($inum).',{"file":"'.addcslashes($file,'\\').'"}],"id":2209}]';
+					var_dump('FOOOOOOOOOOOO111111111111111111111',$inum,$json);
+					$addq = $_Kodi->sendJson($json);
+					var_dump($addq);
+				}
+			}
+		// return print_r($output,true);
+		// break;
+		case "getplaylist":
+			// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+			// $curitem = null;
+			// $res = $_Kodi->sendJson($json);
+			// if ($res['result']) {
+				// $curitem = $res['result']['item']['file'];
+			// }
+			$curitem = kodiCurItem();
+			
+			
+			// $json = '[{"jsonrpc":"2.0","method":"Playlist.GetItems","params":[1,["title"]],"id":2208}]';
+
+			// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"174938944","params":{"directory":"'.$path.'","media":"video","properties":["title","file","artist","duration","runtime","playcount","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+// "media":"video",
+			// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"media":"video","properties":["title","thumbnail","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"],"limits":{"start":0}}}';
+			// return print_r($addq,true).print_r($output,true);
+//			var_dump($output);
+			$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
+			$output = $_Kodi->sendJson($json);
+			$output = renderQueue($output,$curitem);
+			var_dump('3333333333333333333333333333333',$output);
+		break;
+		case 'playPause':
+			//get current playlist items, or provide argument 0 for music, 1 for video, 2 for pictures:
+			$playpause = '[
+				{
+					"id": 2240,
+					"jsonrpc": "2.0",
+					"method": "Player.PlayPause",
+					"params": [
+						1,
+						"toggle"
+					]
+				}
+			]';
+
+			$output = $_Kodi->sendJson($playpause);
+			$output = "Toggle Play/Pause";
+			//echo "<pre>dev:<br>".json_encode($dev, JSON_PRETTY_PRINT)."</pre><br>";	
+		break;
+		case "movies":
+			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
+			$path = $kodi['paths'][1];
+			// $dirs = getDir($path)['result']['files'];
+			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+			$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+			$dirs = $_Kodi->sendJson($json);
+			var_dump($dirs);
+			$output = renderDir($dirs,$path,kodiCurItem(),($data));
+		break;
+		case "seek":
+			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
+			//$path = $kodi['paths'][0];
+			// $dirs = getDir($path)['result']['files'];
+			//$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+
+			//if (!$kodi['playfilename']) {
+
+			// $curitem = null;
+			$playfile = "unknown";
+			list($curitem,$playfile) = kodiCurItem(true);
+			// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","runtime","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
+			// $res = $_Kodi->sendJson($json);
+			// if ($res['result']) {
+				// if (isset($res['result']['item']['label'])) {
+					// $playfile = $res['result']['item']['label'];
+				// } else {
+					// $playfile = $res['result']['item']['file'];
+				// }
+			// }
+			// } else {
+				// $playfile = $kodi['playfilename'];
+			// }
+
+		$json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["playlistid","speed","position","totaltime","time","percentage","shuffled","repeat","canrepeat","canshuffle","canseek","partymode"]],"id":11}'; //,{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":12}';
+		$props = $_Kodi->sendJson($json)['result'];
+		file_put_contents('seekprops.json',json_encode($props));
+    global $lastStatusPlayer;
+		var_dump('TIME000000000000000000000000',$lastStatusPlayer,$props);
+		if ($props == NULL) { return "props null"; }
+		
+		if ($arg == NULL || $arg[0] == 'show') {
+			
+			$time = $props['time'];
+			$time = array_map('padInt',$time);
+			$curtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
+			$time = $props['totaltime'];
+			$time = array_map('padInt',$time);
+			$endtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
+
+			// $time = (($props['totaltime']['hours']*60)*60);
+			// $time = $time+($props['totaltime']['minutes']*60);
+			// $ttime = $time+$props['totaltime']['seconds'];
+			// $time = (($props['time']['hours']*60)*60);
+			// $time = $time+($props['time']['minutes']*60);
+			// $time = $time+$props['time']['seconds'];
+			// $pcnt = percentage($time,$ttime);
+			$pcnt = round($props['percentage'],2);
+			
+			if (is_array($arg) && $arg[0] == 'show') {
+				$json = '[{"jsonrpc":"2.0","method":"Input.ExecuteAction","params":["osd"],"id":31}]';
+				$osd = $_Kodi->sendJson($json);
+			}
+			
+			$rplayfile=$playfile;
+			// $state = "Playing";
+			// if (!$props['speed']) { 
+					// $state = "Paused"; 
+				// if (!$props['percentage'] || $props['position'] == -1) { 
+					// $state = "Stopped";
+				// }
+			// }
+
+
+			$spd = $props['speed'];
+			$pos = $props['position'];
+			$pcntr = round($props['percentage']);
+			$pcnt = round($props['percentage'],2);
+
+
+			$state = ($spd)?(($pos == -1 || !$pcntr )?"Stopped":"Playing"):"Paused";
+
+			if (!$playfile) { $rplayfile = ''; }
+			$play = $rplayfile;
+			// $lastStatusPlayer[] = [$state,$play,$pcnt,$curtime,$endtime];
+			$lastStatusPlayer[0] = $state;
+			$lastStatusPlayer[1] = $play;
+			$lastStatusPlayer[2] = $pcnt;
+			$lastStatusPlayer[3] = $curtime;
+			$lastStatusPlayer[4] = $endtime;
+			
+			return "[$state] $play \n".$curtime." / ".$endtime. " $pcnt%";
+		} else {
+			if ($arg[0] == 'pcnt') {
+				$percent = $arg[1];
+				$json = '{"jsonrpc":"2.0","method":"Player.Seek","params":[1,{"percentage":'.$percent.'}],"id":8}';
+				// $dirs = $_Kodi->sendJson(json_encode($json));
+				$dirs = json_encode($_Kodi->sendJson($json));
+				var_dump($dirs);
+				// return $dirs;	
+				// return false;	
+			} else {
+				if ($arg[0] == 'time') {
+					$time = $props['time'];
+					$curtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
+					var_dump('ARG1',$arg[1][0]);
+					
+					$newtime = explode(':',date('H:i:s',strtotime("$curtime ".$arg[1][0])));
+					
+					
+					$json = ["id"=>0,"jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1]];
+					$json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
+					var_dump($json);
+					$dirs = $_Kodi->sendJson(json_encode($json));
+					var_dump($dirs);
+				} else if ($arg[0] == 'abs') {
+					$json = ["id"=>0,"jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1]];
+					if (is_numeric($arg[1])) {
+						$newtime = secsToTimeArray($arg[1]);
+						$json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
+					} else if(is_array($arg[1])) {
+						$json["params"][1] = ["time" => $arg[1]];
+					}
+					// $json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
+					var_dump($json);
+					$dirs = $_Kodi->sendJson(json_encode($json));
+					var_dump($dirs);
+				}
+			}
+
+			// $json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["playlistid","speed","position","totaltime","time","percentage","shuffled","repeat","canrepeat","canshuffle","canseek","partymode"]],"id":11}'; //,{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":12}';
+			// $props = $_Kodi->sendJson($json)['result'];
+			// var_dump('TIME000000000000000000000000',$props);
+			// if ($props == NULL) { return "props null"; }
+			// $time = (($props['totaltime']['hours']*60)*60);
+			// $time = $time+($props['totaltime']['minutes']*60);
+			// $ttime = $time+$props['totaltime']['seconds'];
+			// $time = (($props['time']['hours']*60)*60);
+			// $time = $time+($props['time']['minutes']*60);
+			// $time = $time+$props['time']['seconds'];
+			// $tleft = $ttime - $time;
+			
+			// global $timer;
+			// global $loop;
+			// if ($timer !== NULL) { $loop->cancelTimer($timer); $timer = NULL; }
+			// var_dump("Clearing voice status in $ttime seconds");
+			// loopy($tleft);
+
+
+
+			setVoiceStatus("Playing $playfile");
+
+			return;
+			
+			
+			$pcnt = percentage($time,$ttime);
+			var_dump('TIME000000000000000000000000',$time,$ttime,$pcnt);
+
+			// $json = {"jsonrpc":"2.0","method":"Player.Seek","params":[1,{"time"}],"id":8};
+			$json = ["jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1,["time"]],"id"=>8];
+
+			//$json = json_decode($json,true);
+			var_dump($json);
+			
+		}			
+			// $json = '[{"jsonrpc":"2.0","method":"Player.Seek","params":[1,{"percentage":'.$percent.'}],"id":8}]';
+
+			// $dirs = $_Kodi->sendJson(json_encode($json));
+			// var_dump($dirs);
+			// $output = renderDir($dirs,$path);
+		break;
+		case "sources":
+			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
+			// $path = $kodi['paths'][0];
+			// $dirs = getDir($path)['result']['files'];
+			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","artist","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+			$json = '{"jsonrpc":"2.0","method":"Files.GetSources","params":["video"],"id":1}'; //,{"jsonrpc":"2.0","method":"Files.GetSources","params":["music"],"id":2},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.audio","unknown",true,["path","name"]],"id":3},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.video","unknown",true,["path","name"]],"id":4}]';
+
+			$dirs = $_Kodi->sendJson($json);
+			$dirs['result']['files'] = $dirs['result']['sources'];
+			var_dump($dirs);
+			$output = renderDir($dirs,'sources',kodiCurItem(),($data));
+		break;
+		case "shows":
+			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
+			$path = $kodi['paths'][0];
+			// $dirs = getDir($path)['result']['files'];
+			$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","artist","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+			$dirs = $_Kodi->sendJson($json);
+			var_dump($dirs);
+			$output = renderDir($dirs,$path,kodiCurItem(),($data));
+		break;
+		case "previous":
+		case "prev":
+			if ($playlistMode) {
+				// $json = '{ "jsonrpc": "2.0", "method": "Input.ExecuteAction", "params": { "action": "skipnext" }, "id": 1 }'
+				// $json = '{ "jsonrpc": "2.0", "method": "Input.ExecuteAction", "params": { "action": "skipprevious" }, "id": 1 }';
+				if ($qindex == 1) { return; }
+				$qindex--;
+				$json = '{"jsonrpc":"2.0","method":"Player.GoTo","params":[1,'.$qindex.'], "id":2}';
+				$output = $_Kodi->sendJson($json);
+
+				var_dump($json,$output,'66666666666666666666666666');
+//				$json = '{ "jsonrpc": "2.0", "method": "Input.ExecuteAction", "params": { "action": "skipprevious" }, "id": 1 }';
+				// usleep(500000);
+				// $output = $_Kodi->sendJson($json);
+				$kodi['onPlay'] = 'getplaylist';
+				$kodi['data'] = $data;
+
+				// $curitem = kodiCurItem();
+				// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
+				// $output = $_Kodi->sendJson($json);
+				// var_dump($output);
+				// $output = renderQueue($output,$curitem);
+				// var_dump('3333333333333333333333333333333',$output);
+
+				break;
+			}
+
+			if (!isset($kodi['playing']) || $kodi['playing'] == null) {
+				$output = "sd89f: Invalid selection";
+			} else {
+				//$arg = intval($kodi['playing'])+1;
+				$arg = intval($kodi['playing'])-1;
+				if (!isset($kodi['menu'][$arg])) {
+					$output = "Invalid menu selection";
+				} else {
+
+
+					// $arg = intval($kodi['playing'])-1;
+					$kodi['playing'] = intval($arg);
+					$selection = $kodi['menu'][$arg];
+					$kodi['playfile'] = $selection[1];
+					$kodi['playfilename'] = $selection[3];
+					// // $output = $_Kodi->openFile(addslashes($selection[1]))['result'];
+					// $output = $_Kodi->openFile(addcslashes($selection[1],'\\'))['result'];
+					kodi('play',$arg);
+					// setVoiceStatus("Playing ".$selection[3]);
+					// var_dump(fixKodiAudio());
+					// if ($data) { $data = null; }
+			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
+				}
+			}
+		break;
+		case "next":
+		
+			if ($playlistMode) {
+				$json = '{ "jsonrpc": "2.0", "method": "Input.ExecuteAction", "params": { "action": "skipnext" }, "id": 1 }';
+				// $json = '{ "jsonrpc": "2.0", "method": "Input.ExecuteAction", "params": { "action": "skipprevious" }, "id": 1 }'
+				$output = $_Kodi->sendJson($json);
+				$kodi['onPlay'] = 'getplaylist';
+				$kodi['data'] = $data;
+
+				// $curitem = kodiCurItem();
+				// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
+				// $output = $_Kodi->sendJson($json);
+				// var_dump($output);
+				// $output = renderQueue($output,$curitem);
+				// var_dump('3333333333333333333333333333333',$output);
+				break;
+			}
+		
+			// if (!isset($kodi['playing'])) {
+			if (!isset($kodi['playing']) || $kodi['playing'] == null) {
+				$output = "p98sdg: Invalid selection";
+			} else {
+				$arg = intval($kodi['playing'])+1;
+				if (!isset($kodi['menu'][$arg])) {
+					$output = "24232: Invalid menu selection";
+				} else {
+					// $arg = intval($kodi['playing'])+1;
+					$kodi['playing'] = intval($arg);
+					$selection = $kodi['menu'][$arg];
+					$kodi['playfile'] = $selection[1];
+					$kodi['playfilename'] = $selection[3];
+					kodi('play',$arg);
+					// $output = $_Kodi->openFile(addslashes($selection[1]))['result'];
+					// $output = $_Kodi->openFile(addcslashes($selection[1],'\\'))['result'];
+					// setVoiceStatus("Playing ".$selection[3]);
+					// var_dump(fixKodiAudio());
+					// if ($data) { $data = null; }
+					
+			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
+				}
+			}
+		break;
+		case "showlist":
+			$listpath = array_filter($kodi['hist'] , fn($o) => !in_array(trim($o),['queue','bookmarks']));
+		case "refresh":
+			if (!isset($listpath)) {
+				$listpath = $kodi['hist'];
+				if (isset($kodi['path'])) {
+					$path = $kodi['path'];
+				} else if (count($kodi['hist'])) {
+					$path = array_pop($kodi['hist']);
+				} else {
+					$path = $kodi['paths'][0];
+				}
+			} else {				
+				if (!$path = array_pop($listpath)) {
+					$path = $kodi['paths'][0];
+				}
+			}
+			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","mediapath","artist","duration","runtime","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","mediapath","artist","duration","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","artist","file","playcount","lastplayed","mimetype","resume","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
+
+			if ($path == 'queue') {
+				$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
+				$output = $_Kodi->sendJson($json);
+				$output = renderQueue($output,kodiCurItem());
+				break;
+			}
+
+			if ($path == 'sources') {
+				// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
+				// $output = $_Kodi->sendJson($json);
+				// $output = renderQueue($output,kodiCurItem());
+				$json = '{"jsonrpc":"2.0","method":"Files.GetSources","params":["video"],"id":1}'; //,{"jsonrpc":"2.0","method":"Files.GetSources","params":["music"],"id":2},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.audio","unknown",true,["path","name"]],"id":3},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.video","unknown",true,["path","name"]],"id":4}]';
+				$dirs = $_
