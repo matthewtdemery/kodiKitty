@@ -82,32 +82,19 @@ function sendMsg($id, $msg, $type = 'user', $server = 788607168228229160) {
 function checkWorkspace($rdata,$name = '') {
 	global $wsLines;
 
-	//$wid = false;
 	$wid = $rdata['message_id'];
 	$cid = $rdata['channel_id'];
-	//$gid = $rdata['guild_id'];
 	var_dump('checkWS',$wid,$cid,$name);
 
 	if (in_array($cid,array_keys($wsLines))) {
 		var_dump('$wsLines[$cid][$name]');
-		//var_dump($wsLines[$cid][$name]);
 		var_dump($wsLines[$cid][$name]);
 		$name = $wsLines['wsnames'][$cid][$wid];
 		if ($wsLines[$cid][$name]['wid'] == $wid) { if ($name == '') { $name =  true; } return $name; }
-		
 	}
 
-
 	include('db.php');
-	// $data = ['wid' => $wid,'cid' => $cid,'name' => $name];
 	$data = ['wid' => $wid,'cid' => $cid];
-
-	// $andgid = '';
-		//var_dump($wsLines[$cid][$name]);
-	// if ($gid !== NULL) {
-		// $andgid = " AND gid=:gid ";
-		// $data['gid'] = $gid;
-	// }
 	$pre = $GLOBALS['filePrefix'];
 	$query = "SELECT * FROM `".$pre."workspaces` WHERE cid=:cid AND wid=:wid"; // $andgid";
 
@@ -120,19 +107,12 @@ function checkWorkspace($rdata,$name = '') {
 		$dbcid = $results['cid'];
 		$dbwid = $results['wid'];
 		$dbname = $results['name'];
-		// if ($name == $dbname && $wid == $dbwid && $cid == $dbcid) { return true; }
 		if ($wid == $dbwid && $cid == $dbcid) { if ($dbname == '') { $dbname =  true; } return $dbname; }
-		// return $results['wid'];
 	} else {
 		var_dump('FALSE $results');
 		var_dump($results);
-		
-		
 	}
-	
 	return false;
-	
-	
 }
 
 // Check if a workspace exists for current channel
@@ -143,10 +123,6 @@ function findWorkspace($data,$name = '') {
 	$andgid = '';
 	$data = ['cid' => $cid,'name' => $name];
 
-	// if ($gid !== NULL) {
-		// $andgid = " AND gid=:gid ";
-		// $data['gid'] = $gid;
-	// }
 	$pre = $GLOBALS['filePrefix'];
 	$query = "SELECT wid,name FROM `".$pre."workspaces` WHERE cid=:cid AND name=:name"; // $andgid";
 
@@ -160,7 +136,6 @@ function findWorkspace($data,$name = '') {
 		var_dump($results);
 		$wid = $results['wid'];
 		$dbname = $results['name'];
-		// return $results['wid'];
 	}
 	return $wid;
 }
@@ -190,9 +165,7 @@ function initWorkspace($data, $wid = null, $new = false, $output = null, $name =
 			$curwid = $wid;
 		}
 	}
-	
-	
-//			$channel->sendMessage($message, false, $embed);
+
 	$channel = getChannel($data);
 	if (!$channel) {
 		return "ERR84389743";
@@ -200,9 +173,9 @@ function initWorkspace($data, $wid = null, $new = false, $output = null, $name =
 	if ($wid) {
 		$message = $channel->messages->get('id', $wid);
 	}
-		var_dump('$reset');
-		var_dump($reset);
-		var_dump('$output 1',$output);
+	var_dump('$reset');
+	var_dump($reset);
+	var_dump('$output 1',$output);
 	if ($reset && !$new) {
 		$curwid = $reset = $wid;
 	}
@@ -218,40 +191,16 @@ function initWorkspace($data, $wid = null, $new = false, $output = null, $name =
 	if ($output == null) { $output = "Base Template for Workspace Modules\n".date('Y-m-d H:i:s'); }
 	if ($new || $reset) {
 		var_dump('$new $reset',$new, $reset);
-		// $row = ActionRow::new();
-		// $button = $row->addComponent(Button::new(Button::STYLE_SUCCESS))->setLabel('A!')->setListener(function (Interaction $interaction) {
-			// $interaction->respondWithMessage(MessageBuilder::new()->setContent('beep'));
-		// }, $discord);
-		
-		
-		// $button = $row->addComponent(Button::new(Button::STYLE_SUCCESS))->setLabel('B!');
-    // $button->setListener(function (Interaction $interaction) {
-    // $interaction->respondWithMessage(MessageBuilder::new()
-        // ->setContent('boop'));
-		// }, $discord);
 
 		$channel->sendMessage(splitMsg($output)[0])->then(function (Message $message) use ($data,$output,$reset,$curwid,$name) {
 			$wid = $message['id'];
 			$cid = $message['channel_id'];
 			$gid = $message['guild_id'];
-  // $query = "INSERT INTO users(`user`, `character`, `homeworld`, `defaultprofile`, `dc`, `discord`, `did`, `verify`, `approved`) 
-	// VALUES (:user, :character, :homeworld, :defaultprofile, :dc, :discord, :did, :verify, :approved)";
-			//$message->react(':arrow_left:');
-			//$message->react(':arrow_right:');
-
 
 			include('db.php');
 			$pre = $GLOBALS['filePrefix'];
 			$query = "INSERT INTO `".$pre."workspaces` (`wid`,`cid`,`gid`,`name`) VALUES (:wid,:cid,:gid,:name) ON DUPLICATE KEY UPDATE wid=:wid";
-      // $query = "INSERT INTO ip (ip, count, username) VALUES(:ip, 1, :username) ON DUPLICATE KEY UPDATE count = count + 1";
-
-			// if ($name == 'player' && $new) { var_dump($query,$wid,$new,$name,'BBBBBBBBBBB'); exit; }
-			//if ($reset) { $query = "UPDATE ".$pre."workspaces SET `wid`=:wid,`cid`=:cid,`gid`=:gid WHERE `cid`=:cid;"; }
-			// $data = ['cid' => $cid,'gid' => $gid,'wid' => $wid];
-			// $data = ['cid' => $cid,'gid' => $gid,'wid' => $wid];
 			echo "saving workspace data\n";
-			//global $dbconn;
-				// echo "s98fd7s09d8yf0s8yf0s98ssssssssssssssssssssssssssssssssssssssss";
 			$res = $dbconn->prepare($query);
 				echo "s98fd7s09d8yf0s8yf0s98ssssssssssssssssssssssssssssssssssssssss";
 			$err = 0;
@@ -267,16 +216,14 @@ function initWorkspace($data, $wid = null, $new = false, $output = null, $name =
 			foreach ($GLOBALS[$wsarrname.'Array'] AS $emotename => $emote) {
 				$message->react($emote);
 			}
-			// $message->react('➡');
 			if (!$status = $res->execute(['cid' => $cid,'gid' => $gid,'wid' => $wid,'name'=>$name])) {
-				echo "88888888888888888888888888888888888888888888888eeeeer66";
-				
-				$err = 1;
+			echo "88888888888888888888888888888888888888888888888eeeeer66";
+			
+			$err = 1;
 				
 			} else if ($reset) {
 				$channel = getChannel($data);
-					var_dump("WID $wid =================================");
-				// $channel->getMessage($reset)->done( function ($oldMsg) use ($reset) {
+				var_dump("WID $wid =================================");
 				
 				$channel->messages->fetch($reset)->then(function (Message $oldMsg) use ($reset) {
 					var_dump("delete $reset =================================");
@@ -284,54 +231,13 @@ function initWorkspace($data, $wid = null, $new = false, $output = null, $name =
 						var_dump("delete 0000000000000000=================================");
 					});
 				});
-				// })->done();
-				
-				
-				// $channel->messages->get($reset)->then( function ($oldMsg) use ($reset) {
-					//$oldMsg->channel->delete(); //Message($pinnedMsg, $output);
-				// });
 			}
 			if ($output !== null) { outputWorkspace($data,$output,$name); }
-
-
-			//global $discord;
-			// $nchan = $discord->getChannel($cid);
-			// sendReply($data, "$wid $cid $gid | ".$err);
-			// $message->channel->editMessage($message, "$output $wid $cid $gid");
 		});
 	} else {
 		$output = "UPDATED!!!!!! $output";
 		$channel = getChannel($data);
-		// $channel->getMessage($msg->id)
-
-
-
-
-		// $message = $channel->getMessage($wid);
-				// var_dump("111111111111111STATUS");
-				// var_dump($channel);
-				// var_dump($message);
-		// global $discord;
-		// $message = $discord->factory(\Discord\Parts\Channel\Message::class, [
-			// 'id' => $wid, //'380675774794956800',
-		// ]);
-				// var_dump("AAAAAAAAAAAAASTATUS");
-				// var_dump($message);
-
-		// var_dump("STATUS",$message,$wid);
 		outputWorkspace($data,$output,$name);
-	// $channel->getMessage($wid)->done( function ($pinnedMsg) use ($output) {
-		// $pinnedMsg->channel->editMessage($pinnedMsg, $output);
-  // });
-		// if ($message == NULL) {
-			// $channel->messages->fetch($wid)->done(function (Message $message) use ($output) {
-				// var_dump("STATUS");
-				// // var_dump($message);
-				// $message->channel->editMessage($message, $output);
-			// });
-		// } else {
-				// $message->channel->editMessage($message, $output);
-		// }
 	}
 }
 
@@ -342,7 +248,6 @@ $wsLines['wsnames'] = [];
 function wsPages($data,$lines = '',$pag = 0,$name = '') {
 	global $wsLines;
 	var_dump('$wspages9099999999999999999',$pag);
-	//var_dump('$wsLines',$wsLines);
 	$channel = getChannel($data);
 	$cid = $data['channel_id'];
 
@@ -374,9 +279,6 @@ function wsPages($data,$lines = '',$pag = 0,$name = '') {
 			$page = 1;
 		}
 	}
-		
-	// if (isset($wsLines[$cid][$name]['total'])) {
-	// }
 
 	if (!is_numeric($pag)) {
 		if ($pag == 'n') { $page++; }
@@ -399,8 +301,7 @@ function wsPages($data,$lines = '',$pag = 0,$name = '') {
 		$wsLines[$cid][$name]['lines'] = $lines;
 		$wsLines[$cid][$name]['total'] = $total;
 		$wsLines[$cid][$name]['wid'] = $wid;
-		//$wsLines[$cid][$name]['page'] = $page;
-	} else if (isset($wsLines[$cid][$name]) && ($lines === NULL || $wsLines[$cid][$name]['crc'] == $crc)) {
+	// } else if (isset($wsLines[$cid][$name]) && ($lines === NULL || $wsLines[$cid][$name]['crc'] == $crc)) {
 		// $lines = $wsLines[$cid][$name]['lines'];
 		// $wid = $wsLines[$cid][$name]['wid'];
 	}
@@ -410,12 +311,10 @@ function wsPages($data,$lines = '',$pag = 0,$name = '') {
 
 	if ($lines === NULL) {
 		echo "\n NULL LINES IN WS OUTPUT \n"; return;
-		// $wsLines[$cid][$name]['page'] = $page;
 	}
 
 	if ($lines === false) {
 		echo "\n FALSE value LINES IN WS OUTPUT \n"; return;
-		// $wsLines[$cid][$name]['page'] = $page;
 	}
 
 	$pageInfo = "\n Page $page of $total\n";
@@ -423,30 +322,21 @@ function wsPages($data,$lines = '',$pag = 0,$name = '') {
 	if ($total == 1 || $name == 'player') {
 		$pageInfo = '';
 	}
-	
+	global $kodi;
+	$pageInfo = "\n Mode: [".$kodi['plmode']."] $pageInfo";
 	$output = $lines[$page-1].$pageInfo;
 
 	$channel->messages->fetch($wid)->then(function (Message $Msg) use ($output) {
 		$Msg->edit(MessageBuilder::new()->setContent($output)); //->then(function (Message $message) {
 	});
-
-
-	// $channel->getMessage($wid)->done( function ($Msg) use ($output) {
-		// $Msg->channel->editMessage($Msg, $output);
-  // });
-	
-	
-	
 }
 
 // Send output to workspace, paginate as necessary
 function outputWorkspace($data,$output,$name = "") {
-	// $channel = getChannel($data);
 	if (!isset($data['channel_id'])) {
 		var_dump('$data,$output,$name');
 		var_dump($data,$output,$name,'AAAAAAAAAAAA');
 		return;
-		// exit;
 	}
 	$cid = $data['channel_id'];
 	$wid = findWorkspace($data,$name);
@@ -454,26 +344,7 @@ function outputWorkspace($data,$output,$name = "") {
 		initWorkspace($data,null,true, $output,$name);
 		return;
 	}
-	// $message = $channel->messages->get('id', $wid);
-	// $message->channel->editMessage($message, $output);
-
 	wsPages($data,$output,0,$name);
-	// getChannel($data)->getMessage($wid)->done( function ($msg) use ($output) {
-		// $msg->channel->editMessage($msg, $output);
-  // });
-//}
-
-	return;
-
-// $message->edit(MessageBuilder::new()
-    // ->setContent($output));
-	
-// $message->edit(MessageBuilder::new()
-    // ->setContent('new content'))->done(function (Message $message) {
-        // ...
-    // });	
-	
-	
 }
 
 // Good spelling means good communication!
@@ -509,9 +380,6 @@ function getChannel($data) {
 			'id' => preg_replace("/[^0-9]/", "", $data), //'380675774794956800',
 		]);
 	} else if($data->channel->guild_id === NULL) { 
-		// $channel = $discord->factory(\Discord\Parts\User\User::class, [
-			// 'id' => preg_replace("/[^0-9]/", "", $data->user), //'380675774794956800',
-		// ]);
 		$channel = $discord->getChannel($data['channel_id']);
 	} else {
 		$guild = $discord->guilds->get('id', $data['guild_id']);
@@ -525,17 +393,9 @@ function getGuild($data) {
 	global $discord;
 	$guild = null;
 	if(is_numeric($data) || $data->channel->guild_id === NULL) {
-		// $channel = $discord->factory(\Discord\Parts\User\User::class, [
-			// 'id' => preg_replace("/[^0-9]/", "", $data), //'380675774794956800',
-		// ]);
 		return $guild;
-	// } else if($data->channel->guild_id === NULL) { 
-		// $channel = $discord->factory(\Discord\Parts\User\User::class, [
-			// 'id' => preg_replace("/[^0-9]/", "", $data->user), //'380675774794956800',
-		// ]);
 	} else {
 		$guild = $discord->guilds->get('id', $data['guild_id']);
-	  //$channel = $guild->channels->get('id', $data['channel_id']); 
 	}
 	return $guild;
 }
@@ -556,68 +416,6 @@ function updateMsg($data, $message = '', $embed = NULL) {
 // });	
 }
 
-// Turn a youtube URL into an mp3
-function youtubedl($url) {
-	var_dump("YOUTUBE DL URL",$url);
-
-	/**
-	 * Sample PHP code for youtube.videos.list
-	 * See instructions for running these code samples locally:
-	 * https://developers.google.com/explorer-help/code-samples#php
-	 */
-
-	if (!file_exists(__DIR__ . '/vendor/autoload.php')) {
-		throw new Exception(sprintf('Please run "composer require google/apiclient:~2.0" in "%s"', __DIR__));
-	}
-	// require_once __DIR__ . '/vendor/autoload.php';
-
-	$client = new Google_Client();
-	$client->setApplicationName('API code samples');
-	$client->setScopes([
-			'https://www.googleapis.com/auth/youtube.readonly',
-	]);
-
-	// TODO: For this request to work, you must replace
-	//       "YOUR_CLIENT_SECRET_FILE.json" with a pointer to your
-	//       client_secret.json file. For more information, see
-	//       https://cloud.google.com/iam/docs/creating-managing-service-account-keys
-	$client->setAuthConfig('client_secret.json');
-	$client->setAccessType('offline');
-
-	// Request authorization from the user.
-	$authUrl = $client->createAuthUrl();
-	printf("Open this link in your browser:\n%s\n", $authUrl);
-	print('Enter verification code: ');
-	$authCode = trim(fgets(STDIN));
-
-	// Exchange authorization code for an access token.
-	$accessToken = $client->fetchAccessTokenWithAuthCode($authCode);
-	$client->setAccessToken($accessToken);
-
-	// Define service object for making API requests.
-	$service = new Google_Service_YouTube($client);
-
-	$queryParams = [
-			'id' => 'Ks-_Mh1QhMc'
-	];
-
-	$response = $service->videos->listVideos('snippet,contentDetails,statistics', $queryParams);
-	return print_r($response,true);
-
-
-    try {
-        // Instantly download a YouTube video (using the default settings).
-        new yt_downloader($url, TRUE);
-
-        // Instantly download a YouTube video as MP3 (using the default settings).
-        new yt_downloader($url, TRUE, 'audio');
-    }
-    catch (Exception $e) {
-        var_dump("RET44444",$e->getMessage());
-    }
-
-}
-
 // Prepare messages for discord character limit
 function splitMsg($message) {
 	if (is_array($message)) {
@@ -626,13 +424,10 @@ function splitMsg($message) {
 	$lines = null;
 	if (strlen($message) > 2000) {
 		$x = 1990;
-		// $longString = 'I like apple. You like oranges. We like fruit. I like meat, also.';
-		// $message = str_replace("\n","LINEBREAK",$message);
 		$message = str_replace(" ","===SPACE===",$message);
 		$message = str_replace("\n"," ",$message);
 		$message = wordwrap($message, $x,'===LINEBREAK===');
 		$message = str_replace(" ","\n",$message);
-		// $message = str_replace('===LINEBREAK===',"\n",$message);
 		$message = str_replace("===SPACE===",' ',$message);
 		$lines = explode('===LINEBREAK===', $message);
 	} else {
@@ -643,98 +438,35 @@ function splitMsg($message) {
 
 // Reply to received message
 function sendReply($data, $message = '', $embed = NULL) {
-	// var_dump($embed);
-	
 	if (!$message && !$embed) { return;}
 
 	if (filter_var($message, FILTER_VALIDATE_URL) === false) {
 		$message .= " ".tacoGen();
 	}
-	// $lines = null;
-	// if (strlen($message) > 2000) {
-		// $x = 1990;
-		// // $longString = 'I like apple. You like oranges. We like fruit. I like meat, also.';
-		// // $message = str_replace("\n","LINEBREAK",$message);
-		// $message = str_replace(" ","===SPACE===",$message);
-		// $message = str_replace("\n"," ",$message);
-		// $message = wordwrap($message, $x,'===LINEBREAK===');
-		// $message = str_replace(" ","\n",$message);
-		// // $message = str_replace('===LINEBREAK===',"\n",$message);
-		// $message = str_replace("===SPACE===",' ',$message);
-		// $lines = explode('===LINEBREAK===', $message);
-	// } else {
-		// $lines = $message;
-	// }
 	$lines = splitMsg($message);
-
-
 	global $discord;
 	$channel = getChannel($data);
 	if ($channel == NULL) {
-		// var_dump($data);
 		return;
 	}
-
-	// if(is_numeric($data)) {
-		// $channel = $discord->factory(\Discord\Parts\User\User::class, [
-			// 'id' => preg_replace("/[^0-9]/", "", $data), //'380675774794956800',
-		// ]);
-	// } else if($data->channel->guild_id === NULL) { 
-		// $channel = $discord->factory(\Discord\Parts\User\User::class, [
-			// 'id' => preg_replace("/[^0-9]/", "", $data->user), //'380675774794956800',
-		// ]);
-	// //}
-	// } else {
-		// $guild = $discord->guilds->get('id', $data['guild_id']);
-	  // $channel = $guild->channels->get('id', $data['channel_id']); 
-	// }
 	$index = 0;
 	if (!is_array($lines)) {
 		$lines = [$lines];
 	}
 	foreach ($lines AS $message) {
-		// $message = str_replace("===SPACE==="," ",$message);
 		$index++;
-		// var_dump($message);
 		if ($index == count($lines)) {
 			$channel->sendMessage($message, false, $embed)->then(function(Message $message) {
 				echo "\nMessage sent!\n";
-				// var_dump($message);
 				return;
-						// global $discord;
-					// $discord->close();
-					// exit;
-			// })->then(function($problem) {
-				// error_log($problem); 
 			});
 		} else {
-				$channel->sendMessage($message)->then(function(Message $message) {
-					echo "\nMessage sent!\n";
-					// var_dump($message);
-					return;
-						// global $discord;
-					// $discord->close();
-					// exit;
-				// })->then(function($problem) {
-					// error_log($problem); 
-				});
-			// } else {
-				// $channel->sendMessage($message);
-			// };
+			$channel->sendMessage($message)->then(function(Message $message) {
+				echo "\nMessage sent!\n";
+				return;
+			});
 		}
 	}
-	// } else {
-		// $channel->sendMessage($message, false, $embed)->then(function(Message $message) {
-			// echo "\nMessage sent!\n";
-			// var_dump($message);
-			// return;
-							// // global $discord;
-						// // $discord->close();
-						// // exit;
-					// // })->then(function($problem) {
-						// // error_log($problem); 
-		// });
-	// }
 	unset($embed);
 }
 
@@ -747,13 +479,9 @@ if (!$chatbot = json_decode(file_get_contents('chatbot.json'),true)) {
 function chatBot($arg,$did) {
 	global $chatbot;
 	$return = [];
-	// return "Not yet";
 	if (!isset($chatbot['sid'][$did]) || !$chatbot['sid'][$did] ) {
 		$chatbot['sid'][$did] = false;
 		file_put_contents('chatbot.json',json_encode($chatbot));
-	//}
-	//if (!isset($chatbot['sid']) || !isset($chatbot['uid'])) {
-
 		$post = [
 			'uid' => '887d79e5bbec1ee2',
 			'intro' => true
@@ -772,18 +500,12 @@ function chatBot($arg,$did) {
 		$chatbot['sid'][$did] = $json['sessionid'];
 		file_put_contents('chatbot.json',json_encode($chatbot));
 		var_dump($response,$json,$chatbot);
-		// return "Error 542";
 		$return = array_merge($return, array_map('strip_tags_content',    $json['responses']));
 	}
-	//return $json['responses'];
-
-
-		//$chatbot['uid'] = $json['uid'];
 	$sid = $chatbot['sid'][$did];
 	$uid = $chatbot['uid'];
 	$post = [		'uid'=>$uid,		'input'=>$arg,		'sessionid'=>$sid	];
 	$response = curl('https://kuli.kuki.ai/cptalk', http_build_query($post));
-	//curl('https://kuli.kuki.ai/cptalk',"uid=887d79e5bbec1ee2&intro=true");
 	if (isset($response['content'])) {
 		$json = json_decode($response['content'],true);
 	}
@@ -791,11 +513,9 @@ function chatBot($arg,$did) {
 		var_dump($response,$json,$chatbot);
 		return "Error 57";
 	}
-	// return array_map('strip_tags_content',    $json['responses']);
 	$return = array_merge($return, array_map('strip_tags_content',    $json['responses']));
 	array_walk($return, function(&$value, $key) use($did) { $value = "<@$did>, ".$value; } );
 	return $return;
-	//return $json['responses'];
 }
 
 // Prepare output for discord
@@ -808,10 +528,6 @@ function validVideoId($id) {
 }
 
 function curl( $url,$curl_data = null,$username = false ) {
-	// global $user;
-	// if (!$username) {
-		// $username = $user;
-	// }
   $options = array(
     CURLOPT_RETURNTRANSFER => true,         // return web page
     CURLOPT_HEADER         => false,        // don't return headers
@@ -833,17 +549,11 @@ function curl( $url,$curl_data = null,$username = false ) {
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $curl_data);
 	}
 
-  // curl_setopt( $ch, CURLOPT_COOKIEJAR,  'wft-'.$username.'.cookies');
-  // curl_setopt( $ch, CURLOPT_COOKIEFILE, 'wft-'.$username.'.cookies' );
-		
   $ret['content'] = curl_exec($ch);
   $ret['err']     = curl_errno($ch);
   $ret['errmsg']  = curl_error($ch) ;
   $ret['header']  = curl_getinfo($ch);
   curl_close($ch);
-  //  $header['errno']   = $err;
-  //  $header['errmsg']  = $errmsg;
-  //  $header['content'] = $content;
   return $ret;
 }
 
@@ -851,7 +561,6 @@ function getLineWithString($lines, $str) {
     if (!is_array($lines)) {
 			$lines = explode("\n",$lines);
 		}
-		// $lines = file($fileName);
     foreach ($lines as $lineNumber => $line) {
         if (strpos($line, $str) !== false) {
             return $line;
@@ -865,7 +574,6 @@ function percentage($partialValue, $totalValue, $round = true) {
 	$rval = $val;
 	if ($round) { $rval = round($val); }
 	if ($rval == 100 && $val != 100 && $round) {
-		//$val = $rval; }
 		return $val;
 	} else if ($round) {
 		return $rval;
@@ -947,7 +655,6 @@ $edataset = [];
 require("phpKodi-api.php");
 
 function cacheYTNames($dir) {
-	//array_unshift($dir,);
 	if ($kerr = kodiError($dir)) { return $kerr; }
 
 	file_put_contents('ytnames.json',json_encode($dir, JSON_PRETTY_PRINT));
@@ -966,8 +673,6 @@ function cacheYTNames($dir) {
 		foreach ($files AS $key => $item) {
 			$filename = $item['file'];
 			$type = $item['filetype'];
-			// if ($type == 'file') {
-			// }
 			$file = false;
 			if (isset($item['mediapath'])) {
 				$file = $item['mediapath'];
@@ -983,13 +688,6 @@ function cacheYTNames($dir) {
 			$name = $title;
 			if (!$name) { $name = $label; }
 			if (!$name) { $name = $filename; }
-			// if (count($artist)) {
-				// $artist = $artist[0];
-				// if ($artist) {
-					// $name = '['.$artist.'] '.str_replace($artist,'',$name);
-				// }
-			// }
-			// $name = str_replace(['[B]','[/B]'],'**',$name);
 			$name = kodiTitle($name,$artist,$file);
 	
 			if ($type == 'directory' && startsWith($item['title'],"Next page") && startsWith($file,'plugin://plugin.video.youtube/kodion/search/query')) {
@@ -1002,12 +700,10 @@ function cacheYTNames($dir) {
 				if ($type == 'file') {
 					$vid = explode('=',$file)[1];
 					$ytmap[$vid] = $name;
-					// $ndir[] = $item;
 				}
 			}
 		}
 		$page++;
-		// $nextpage = array_values(array_filter($dir,fn($val) =>  $val['filetype'] == 'directory' && startsWith($val['title'],"Next page")))[0];
 		if (!$nextpage) {
 			break;
 		}
@@ -1033,14 +729,12 @@ $kodi['playing'] = null;
 $kodi['playfile'] = null;
 $kodi['playfilename'] = null;
 $kodi['playpic'] = null;
-// $kodi['movies'] = [];
 
 function kodiTitle($name,$artist = [],$file = false) {
 	if (is_array($artist) && count($artist)) {
 		$artist = preg_replace("/ - Topic$/",'',$artist[0]);
 		if ($artist) {
 			$name = str_replace($artist,'',$name);
-			// $name = $artist.$name;
 		} else {
 			$artist = false;
 		}
@@ -1054,7 +748,6 @@ function kodiTitle($name,$artist = [],$file = false) {
 		$vid = explode('=',$file)[1];
 	}
 	if ($vid) { 
-		// preg_match('/^[\x{0590}-\x{05fe} ]+$/u',$name,$matches);
 		preg_match("/\\\u[0-f].../",trim(json_encode($name),'"'),$matches);
 		if (count($matches) || strpos($name,':')) {
 			$name = " $name [$vid](<https://www.youtube.com/watch?v=$vid>)";
@@ -1070,7 +763,6 @@ function kodiTitle($name,$artist = [],$file = false) {
 }
 
 function secsToTimeArray($secs,$assoc = false) {
-	// $newtime = explode(':',date('H:i:s',strtotime("midnight + $secs seconds")));
 	$newtime = explode(':',gmdate("H:i:s", $secs));
 	if ($assoc) { return ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]; }
 	return $newtime;
@@ -1080,12 +772,6 @@ function usortLabel($a, $b) { return (preg_replace('/[^a-z\d ]/i','',$a['filetyp
 
 function renderDir($dirs,$curpath,$curitem = null,$paginate = false) {
 	if ($curitem !== null) { $curitem = stripslashes($curitem); }
-	
-	// if (isset($dirs['error'])) {
-		// var_dump($dirs['error'],$path);
-		// return;
-	// }
-	// if (!kodiError($dirs)) { return false; }
 	if ($kerr = kodiError($dirs)) { return $kerr; }
 
 	$files = $dirs;
@@ -1099,14 +785,9 @@ function renderDir($dirs,$curpath,$curitem = null,$paginate = false) {
 
 	if (startsWith($curpath,'plugin://plugin.video.youtube/')) {
 		$kodi['plmode'] = "yt";
-		// $last = $dirs[array_key_last($dirs)];
-		// if ($isset($last) && $last['filetype'] == 'directory' && startsWith($last['title'],"Next page")) {
 		if (!isset($files['ytparsed'])) {
 			if (!$files = cacheYTNames($files)) { return "E4744"; }
 			unset($files['ytparsed']);
-		// } else {
-			// unset($files['ytparsed']);
-			// $files = $dirs;
 		}
 	}
 	if (isset($files['ytparsed'])) {
@@ -1121,17 +802,11 @@ function renderDir($dirs,$curpath,$curitem = null,$paginate = false) {
 	if (	$kodi['plmode'] == 'files') {
 		var_dump(usort($dirs,'usortLabel'),$dirs);		
 		file_put_contents('dirfiles.json',json_encode($dirs, JSON_PRETTY_PRINT));
-		//exit;
 	}
 
 	global $nums;
 	$play = '▶';
 	$pause = '⏸';
-	// if (!isset($dirs['result'])) {
-		// var_dump($dirs,'DIRS ERROR');
-		// return false;
-	// }
-	// $dirs = $dirs['result']['files'];
 	
 	$kodi['path'] = $curpath;
 
@@ -1144,11 +819,8 @@ function renderDir($dirs,$curpath,$curitem = null,$paginate = false) {
 	if ($paginate) {
 			$output[$page] = "";
 	} else {
-		// $output .= " $watched$key: $name $dur\n";
 		$output = '';
 	}
-
-
 
 	if (!count($dirs)) {
 		$output = '0 results';
@@ -1176,7 +848,6 @@ function renderDir($dirs,$curpath,$curitem = null,$paginate = false) {
 		$name = kodiTitle($name,$artist,$file);
 
 		$type = ($curpath == 'sources')?'directory':$item['filetype'];
-		// $path = $item['file'];
 		$path = stripslashes($file);
 		$pic = $item['thumbnail'];
 		if (!$name) { $name = $path; }
@@ -1220,13 +891,10 @@ function renderDir($dirs,$curpath,$curitem = null,$paginate = false) {
 		if ($paginate) {
 		}
 		
-		
 		if ($paginate) {
 			if ($ic >= 11) { $page++; $ic = 1;
 				$code = $nums[$ic];
 				$output[$page] = "$code $watched: $name $dur\n";
-				//$ic++;
-				//$output[$page] = "";
 			} else {
 				$code = $nums[$ic];
 				$output[$page] .= "$code $watched: $name $dur\n";
@@ -1259,15 +927,15 @@ function renderQueue($items,$curitem = null) {
 	}
 	$items = $items['result']['items'];
 	
-	// $kodi['path'] = $path;
 	$kodi['hist'][] = "queue";
-	// $kodi['menu'] = [];
 	$kodi['queue'] = [];
+
 	$output = "            **__Queue List__** \n";
+
 	if (!count($items)) {
 		$output .= '0 results';
 	}
-	//var_dump('9999999999999999999999999999999999999999999999999999$ytmap');
+
 	var_dump($ytmap);
 	foreach ($items AS $key => $item) {
 		if (isset($item['mediapath']) && $item['mediapath']) {
@@ -1276,11 +944,8 @@ function renderQueue($items,$curitem = null) {
 			$path = $item['file'];
 		}
 		$path = stripslashes($path);
-		// $ssaver = 'http://sylvan.apple.com/Videos';
-		// if ( $ssaveron = startsWith($path,$ssaver)) { continue; }
 
 		var_dump('AAAAAAAAAAAAAAAAAAAAA',$key,$curitem,$path);
-		
 
 		$name = $item['title'];
 		$label = $item['label'];
@@ -1291,10 +956,7 @@ function renderQueue($items,$curitem = null) {
 			if (isset($ytmap[$vid])) {
 				$name = $ytmap[$vid];
 			}
-		// } else if (startsWith($path,'plugin:\/\/plugin.video.youtube\/play\/?video_id') && isset($ytmap[$path])) {
-			// $name = $ytmap[addcslashes($path,'//')];
 		}
-		// $type = $item['filetype'];
 		$pic = $item['thumbnail'];
 		$watchedbool = false;
 		$watched = '🔲';
@@ -1306,11 +968,6 @@ function renderQueue($items,$curitem = null) {
 			$watchedbool = 'playing';
 			$watched = $play;
 		}
-		// if ($type == 'directory') {
-			// $watched = '📁';
-		// }
-		
-		//$kodi['menu'][$key] = ['file',$path,$watchedbool,$name,intval($resume)];
 		$kodi['queue'][$key] = ['file',$path,$watchedbool,$name,$pic];
 		
 		$output .= " $watched$key: $name \n";
@@ -1332,7 +989,6 @@ function padInt($val) {
 	return str_pad($val,2,'0',STR_PAD_LEFT);
 }
 
-//$_Kodi = null;
 function connectKodi($verbose = false) {
 	global $_Kodi;
 	$IP = 'localhost:8088';
@@ -1375,7 +1031,6 @@ function timeArrayToSecs($time) {
 	if (is_array($time)) {
 		if (isset($time['hours'])) {
 			unset($time['milliseconds']);
-			//$time = implode(':',$time))
 		}
 		$time = implode(':',array_map('padInt',$time));
 	}
@@ -1407,7 +1062,7 @@ function popBMMap($did,$array = false) {
 		var_dump("$did has no bookmarks yet");
 		return "You have no bookmarks saved yet!";
 	}
-	//$did = $arg[1];
+
 	$results = "__**Bookmarks**__\n";
 
 	$ikey = 0;
@@ -1422,10 +1077,9 @@ function popBMMap($did,$array = false) {
 		$n = $bm['name'];
 		$f = $bm['file'];
 		$dirTemplate = [];
-		// $t = json_decode($bm['time'],true);
-		// unset($t['milliseconds']);
+
 		$bmmap[$did][$ikey] = [$id,$f];
-		// $time = implode(':',array_map('padInt',$t));
+
 		$time = $ttime = '';
 		$position = $total = false;
 		if ($bm['time']) {
@@ -1466,16 +1120,6 @@ function popBMMap($did,$array = false) {
 		}
 
 		$dirs[] = $dirTemplate;
-
-		// "resume": {
-				// "position": 2426.923328,
-				// "total": 2834.091
-		// },
-		// "runtime": 2834,
-		
-		
-		// $results .= "  $key [$ikey]: $n $time \n";
-		
 	}
 	file_put_contents('bmsdirs.json',json_encode($dirs, JSON_PRETTY_PRINT));
 	var_dump($bmmap[$did]);
@@ -1666,12 +1310,6 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 		$lastStatusData = $data;
 	}
 	
-	// function getDir($path) {
-		// global $_Kodi;
-		// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
-		// $dirs = $_Kodi->sendJson($json);
-	// }
-
 	if ($data !== false) {
 		file_put_contents('kodidata.json',json_encode($data, JSON_PRETTY_PRINT));		
 	}
@@ -1697,10 +1335,6 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 		}
 		
 	}
-	// return print_r($addq,true).print_r($output,true);
-	//$output = renderQueue($output,$curitem);
-
-
 
 	var_dump("KODI",$action,$arg);
 
@@ -1981,11 +1615,9 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 			// $arg = null;
 		break;
 		case "osd":
-			// $json = '[{"jsonrpc":"2.0","method":"Playlist.Remove","params":[1,'.intval($arg).'],"id":112}]';
 			$json = '[{"jsonrpc":"2.0","method":"Input.ExecuteAction","params":["osd"],"id":31}]';
 			$output = $_Kodi->sendJson($json);
 			var_dump($output);
-			// $arg = null;
 		break;
 		case "unqueue":
 			if ($arg == 'all') {
@@ -2026,7 +1658,6 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 				// return "Invalid selection";
 			}
 		case "queue":
-			// return $curitem;
 		
 			if ($arg !== null) {
 				// if (count($res = filterArrayByKeyValue($kodi['menu'],2,false))) {
@@ -2109,32 +1740,15 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 					var_dump($addq);
 				}
 			}
-		// return print_r($output,true);
-		// break;
 		case "getplaylist":
-			// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
-			// $curitem = null;
-			// $res = $_Kodi->sendJson($json);
-			// if ($res['result']) {
-				// $curitem = $res['result']['item']['file'];
-			// }
 			$curitem = kodiCurItem();
 			
-			
-			// $json = '[{"jsonrpc":"2.0","method":"Playlist.GetItems","params":[1,["title"]],"id":2208}]';
-
-			// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"174938944","params":{"directory":"'.$path.'","media":"video","properties":["title","file","artist","duration","runtime","playcount","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
-// "media":"video",
-			// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"media":"video","properties":["title","thumbnail","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"],"limits":{"start":0}}}';
-			// return print_r($addq,true).print_r($output,true);
-//			var_dump($output);
 			$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
 			$output = $_Kodi->sendJson($json);
 			$output = renderQueue($output,$curitem);
 			var_dump('3333333333333333333333333333333',$output);
 		break;
 		case 'playPause':
-			//get current playlist items, or provide argument 0 for music, 1 for video, 2 for pictures:
 			$playpause = '[
 				{
 					"id": 2240,
@@ -2149,184 +1763,101 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 
 			$output = $_Kodi->sendJson($playpause);
 			$output = "Toggle Play/Pause";
-			//echo "<pre>dev:<br>".json_encode($dev, JSON_PRETTY_PRINT)."</pre><br>";	
 		break;
 		case "movies":
-			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
 			$path = $kodi['paths'][1];
-			// $dirs = getDir($path)['result']['files'];
-			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 			$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 			$dirs = $_Kodi->sendJson($json);
 			var_dump($dirs);
 			$output = renderDir($dirs,$path,kodiCurItem(),($data));
 		break;
 		case "seek":
-			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
-			//$path = $kodi['paths'][0];
-			// $dirs = getDir($path)['result']['files'];
-			//$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
-
-			//if (!$kodi['playfilename']) {
-
-			// $curitem = null;
 			$playfile = "unknown";
 			list($curitem,$playfile) = kodiCurItem(true);
-			// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","runtime","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
-			// $res = $_Kodi->sendJson($json);
-			// if ($res['result']) {
-				// if (isset($res['result']['item']['label'])) {
-					// $playfile = $res['result']['item']['label'];
-				// } else {
-					// $playfile = $res['result']['item']['file'];
-				// }
-			// }
-			// } else {
-				// $playfile = $kodi['playfilename'];
-			// }
 
-		$json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["playlistid","speed","position","totaltime","time","percentage","shuffled","repeat","canrepeat","canshuffle","canseek","partymode"]],"id":11}'; //,{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":12}';
-		$props = $_Kodi->sendJson($json)['result'];
-		file_put_contents('seekprops.json',json_encode($props));
-    global $lastStatusPlayer;
-		var_dump('TIME000000000000000000000000',$lastStatusPlayer,$props);
-		if ($props == NULL) { return "props null"; }
-		
-		if ($arg == NULL || $arg[0] == 'show') {
+			$json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["playlistid","speed","position","totaltime","time","percentage","shuffled","repeat","canrepeat","canshuffle","canseek","partymode"]],"id":11}'; //,{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":12}';
+			$props = $_Kodi->sendJson($json)['result'];
+			file_put_contents('seekprops.json',json_encode($props));
+			global $lastStatusPlayer;
+			var_dump('TIME000000000000000000000000',$lastStatusPlayer,$props);
+			if ($props == NULL) { return "props null"; }
 			
-			$time = $props['time'];
-			$time = array_map('padInt',$time);
-			$curtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
-			$time = $props['totaltime'];
-			$time = array_map('padInt',$time);
-			$endtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
+			if ($arg == NULL || $arg[0] == 'show') {
+				
+				$time = $props['time'];
+				$time = array_map('padInt',$time);
+				$curtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
+				$time = $props['totaltime'];
+				$time = array_map('padInt',$time);
+				$endtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
 
-			// $time = (($props['totaltime']['hours']*60)*60);
-			// $time = $time+($props['totaltime']['minutes']*60);
-			// $ttime = $time+$props['totaltime']['seconds'];
-			// $time = (($props['time']['hours']*60)*60);
-			// $time = $time+($props['time']['minutes']*60);
-			// $time = $time+$props['time']['seconds'];
-			// $pcnt = percentage($time,$ttime);
-			$pcnt = round($props['percentage'],2);
-			
-			if (is_array($arg) && $arg[0] == 'show') {
-				$json = '[{"jsonrpc":"2.0","method":"Input.ExecuteAction","params":["osd"],"id":31}]';
-				$osd = $_Kodi->sendJson($json);
-			}
-			
-			$rplayfile=$playfile;
-			// $state = "Playing";
-			// if (!$props['speed']) { 
-					// $state = "Paused"; 
-				// if (!$props['percentage'] || $props['position'] == -1) { 
-					// $state = "Stopped";
-				// }
-			// }
-
-
-			$spd = $props['speed'];
-			$pos = $props['position'];
-			$pcntr = round($props['percentage']);
-			$pcnt = round($props['percentage'],2);
-
-
-			$state = ($spd)?(($pos == -1 || !$pcntr )?"Stopped":"Playing"):"Paused";
-
-			if (!$playfile) { $rplayfile = ''; }
-			$play = $rplayfile;
-			// $lastStatusPlayer[] = [$state,$play,$pcnt,$curtime,$endtime];
-			$lastStatusPlayer[0] = $state;
-			$lastStatusPlayer[1] = $play;
-			$lastStatusPlayer[2] = $pcnt;
-			$lastStatusPlayer[3] = $curtime;
-			$lastStatusPlayer[4] = $endtime;
-			
-			return "[$state] $play \n".$curtime." / ".$endtime. " $pcnt%";
-		} else {
-			if ($arg[0] == 'pcnt') {
-				$percent = $arg[1];
-				$json = '{"jsonrpc":"2.0","method":"Player.Seek","params":[1,{"percentage":'.$percent.'}],"id":8}';
-				// $dirs = $_Kodi->sendJson(json_encode($json));
-				$dirs = json_encode($_Kodi->sendJson($json));
-				var_dump($dirs);
-				// return $dirs;	
-				// return false;	
-			} else {
-				if ($arg[0] == 'time') {
-					$time = $props['time'];
-					$curtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
-					var_dump('ARG1',$arg[1][0]);
-					
-					$newtime = explode(':',date('H:i:s',strtotime("$curtime ".$arg[1][0])));
-					
-					
-					$json = ["id"=>0,"jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1]];
-					$json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
-					var_dump($json);
-					$dirs = $_Kodi->sendJson(json_encode($json));
-					var_dump($dirs);
-				} else if ($arg[0] == 'abs') {
-					$json = ["id"=>0,"jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1]];
-					if (is_numeric($arg[1])) {
-						$newtime = secsToTimeArray($arg[1]);
-						$json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
-					} else if(is_array($arg[1])) {
-						$json["params"][1] = ["time" => $arg[1]];
-					}
-					// $json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
-					var_dump($json);
-					$dirs = $_Kodi->sendJson(json_encode($json));
-					var_dump($dirs);
+				$pcnt = round($props['percentage'],2);
+				
+				if (is_array($arg) && $arg[0] == 'show') {
+					$json = '[{"jsonrpc":"2.0","method":"Input.ExecuteAction","params":["osd"],"id":31}]';
+					$osd = $_Kodi->sendJson($json);
 				}
-			}
+				
+				$rplayfile=$playfile;
 
-			// $json = '{"jsonrpc":"2.0","method":"Player.GetProperties","params":[1,["playlistid","speed","position","totaltime","time","percentage","shuffled","repeat","canrepeat","canshuffle","canseek","partymode"]],"id":11}'; //,{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":12}';
-			// $props = $_Kodi->sendJson($json)['result'];
-			// var_dump('TIME000000000000000000000000',$props);
-			// if ($props == NULL) { return "props null"; }
-			// $time = (($props['totaltime']['hours']*60)*60);
-			// $time = $time+($props['totaltime']['minutes']*60);
-			// $ttime = $time+$props['totaltime']['seconds'];
-			// $time = (($props['time']['hours']*60)*60);
-			// $time = $time+($props['time']['minutes']*60);
-			// $time = $time+$props['time']['seconds'];
-			// $tleft = $ttime - $time;
-			
-			// global $timer;
-			// global $loop;
-			// if ($timer !== NULL) { $loop->cancelTimer($timer); $timer = NULL; }
-			// var_dump("Clearing voice status in $ttime seconds");
-			// loopy($tleft);
+				$spd = $props['speed'];
+				$pos = $props['position'];
+				$pcntr = round($props['percentage']);
+				$pcnt = round($props['percentage'],2);
 
+				$state = ($spd)?(($pos == -1 || !$pcntr )?"Stopped":"Playing"):"Paused";
 
+				if (!$playfile) { $rplayfile = ''; }
+				$play = $rplayfile;
 
-			setVoiceStatus("Playing $playfile");
-
-			return;
-			
-			
-			$pcnt = percentage($time,$ttime);
-			var_dump('TIME000000000000000000000000',$time,$ttime,$pcnt);
-
-			// $json = {"jsonrpc":"2.0","method":"Player.Seek","params":[1,{"time"}],"id":8};
-			$json = ["jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1,["time"]],"id"=>8];
-
-			//$json = json_decode($json,true);
-			var_dump($json);
-			
-		}			
-			// $json = '[{"jsonrpc":"2.0","method":"Player.Seek","params":[1,{"percentage":'.$percent.'}],"id":8}]';
-
-			// $dirs = $_Kodi->sendJson(json_encode($json));
-			// var_dump($dirs);
-			// $output = renderDir($dirs,$path);
+				$lastStatusPlayer[0] = $state;
+				$lastStatusPlayer[1] = $play;
+				$lastStatusPlayer[2] = $pcnt;
+				$lastStatusPlayer[3] = $curtime;
+				$lastStatusPlayer[4] = $endtime;
+				
+				return "[$state] $play \n".$curtime." / ".$endtime. " $pcnt%";
+			} else {
+				if ($arg[0] == 'pcnt') {
+					$percent = $arg[1];
+					$json = '{"jsonrpc":"2.0","method":"Player.Seek","params":[1,{"percentage":'.$percent.'}],"id":8}';
+					// $dirs = $_Kodi->sendJson(json_encode($json));
+					$dirs = json_encode($_Kodi->sendJson($json));
+					var_dump($dirs);
+					// return $dirs;	
+					// return false;	
+				} else {
+					if ($arg[0] == 'time') {
+						$time = $props['time'];
+						$curtime = implode(':',[$time['hours'],$time['minutes'],$time['seconds']]);
+						var_dump('ARG1',$arg[1][0]);
+						
+						$newtime = explode(':',date('H:i:s',strtotime("$curtime ".$arg[1][0])));
+						
+						
+						$json = ["id"=>0,"jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1]];
+						$json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
+						var_dump($json);
+						$dirs = $_Kodi->sendJson(json_encode($json));
+						var_dump($dirs);
+					} else if ($arg[0] == 'abs') {
+						$json = ["id"=>0,"jsonrpc"=>"2.0","method"=>"Player.Seek","params"=>[1]];
+						if (is_numeric($arg[1])) {
+							$newtime = secsToTimeArray($arg[1]);
+							$json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
+						} else if(is_array($arg[1])) {
+							$json["params"][1] = ["time" => $arg[1]];
+						}
+						// $json["params"][1] = ["time" => ['hours'=>intval($newtime[0]),'minutes'=>intval($newtime[1]),'seconds' => intval($newtime[2]),'milliseconds'=>00]];
+						var_dump($json);
+						$dirs = $_Kodi->sendJson(json_encode($json));
+						var_dump($dirs);
+					}
+				}
+				setVoiceStatus("Playing $playfile");
+			}			
 		break;
 		case "sources":
-			// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
-			// $path = $kodi['paths'][0];
-			// $dirs = getDir($path)['result']['files'];
-			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","artist","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 			$json = '{"jsonrpc":"2.0","method":"Files.GetSources","params":["video"],"id":1}'; //,{"jsonrpc":"2.0","method":"Files.GetSources","params":["music"],"id":2},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.audio","unknown",true,["path","name"]],"id":3},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.video","unknown",true,["path","name"]],"id":4}]';
 
 			$dirs = $_Kodi->sendJson($json);
@@ -2831,7 +2362,6 @@ function numberfy_array($array) {
 	return $array;
 }
 
-
 function externalUpdate($eurl,$field,$input,$user) {
 	error_log(var_dump($eurl,$field,$input,$user['user']));
 	include('db.php');
@@ -3270,7 +2800,8 @@ $playerArray = [
 	'ff' => '⏩',
 	'tnext' => '⏭️',
 	'movies' => '🎦',
-	'tv' => '📺'
+	'tv' => '📺',
+	'showpos' => '💠'
 ];
 
 $emoteArray = $playerArray + $playlistArray;
@@ -3620,6 +3151,10 @@ function reactionAction($emojianame,$reaction,$name = '') {
 		case "refresh":
 			kodi('refresh',null,$reaction);
 		break;
+		case "showpos":
+			// kodi('showlist',null,$reaction);
+			global $lastStatusPlayer; list($lastStatusPlayer[0],$lastStatusPlayer[2],$lastStatusPlayer[3],$lastStatusPlayer[4]) = getVidTimes(); $msg = playerStatus('useArray');
+		break;
 		case "showlist":
 			kodi('showlist',null,$reaction);
 		break;
@@ -3650,10 +3185,14 @@ function reactionAction($emojianame,$reaction,$name = '') {
 	}
 }
 
+function updateKTimes() {
+	global $lastStatusPlayer; list($lastStatusPlayer[0],$lastStatusPlayer[2],$lastStatusPlayer[3],$lastStatusPlayer[4]) = getVidTimes(); $msg = playerStatus('useArray');
+}
+
 function fruityLooper() {
+	updateKTimes();
 	global $stopLoop;
 	if ($stopLoop) {return; }
-	global $lastStatusPlayer; list($lastStatusPlayer[0],$lastStatusPlayer[2],$lastStatusPlayer[3],$lastStatusPlayer[4]) = getVidTimes(); $msg = playerStatus('useArray');
 	var_dump($msg);
 	if ($lastStatusPlayer[0] == "Playing") {
 		loopyLoop(5);
@@ -3845,6 +3384,11 @@ $discord->on('init', function (Discord $discord) {
 
 		$isws = checkWorkspace($reaction);
 		if ($isws && !$dmMode) {
+
+			file_put_contents('discordvar.json',json_encode($discord, JSON_PRETTY_PRINT));
+			file_put_contents('discordvar.txt',print_r($discord, true));
+
+
 			var_dump('YEEEEEEEEEEEEET COOOKIESSSSS 55555555555555555555777777777777777');
 			return;
 		}
@@ -3936,6 +3480,14 @@ $discord->on('init', function (Discord $discord) {
 
 	$discord->on(Event::MESSAGE_CREATE, function (Message $data, Discord $discord) {
 	
+	// var_dump($GLOBALS['RATELIMIT']);
+	
+	if (!isset($data['content'])) {
+		var_dump($data);
+		error_log("DATA CONTENT NOT SET");
+		return;
+	}
+		
 	$data['content'] = '.'.$data['content'];
 	
 		if ($data['channel_id'] == '791272018279923755' && isset($data['content'])) {
@@ -3976,7 +3528,7 @@ $discord->on('init', function (Discord $discord) {
 
 		$commpref = false;
 
-		if (isset($data['content']) && startsWith(strtolower($data['content']),$GLOBALS['commandPrefix']) && !startsWith(strtolower($data['content']),$GLOBALS['commandPrefix'].$GLOBALS['commandPrefix'])) {
+		if (startsWith(strtolower($data['content']),$GLOBALS['commandPrefix']) && !startsWith(strtolower($data['content']),$GLOBALS['commandPrefix'].$GLOBALS['commandPrefix'])) {
 			error_log("Command prefix detected. Command issued is: ".$data['content']."\n");
 			if (file_exists("/tmp/maintenance.lock")) {
 				sendReply($data, "Crystal Systems is in maintenance mode. Please try again in a few minutes.");
@@ -4002,7 +3554,7 @@ $discord->on('init', function (Discord $discord) {
 		}
 		
 // workspace dev and testing stubs
-		if (isset($data['content']) && strtolower($data['content']) === '.testws' || startsWith(strtolower($data['content']),'.workspace') || startsWith(strtolower($data['content']),'.wsout ') || startsWith(strtolower($data['content']),'.wfortune')) {
+		if (strtolower($data['content']) === '.testws' || startsWith(strtolower($data['content']),'.workspace') || startsWith(strtolower($data['content']),'.wsout ') || startsWith(strtolower($data['content']),'.wfortune')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$info = explode(' ',trim($data['content']));
 				$wid = null;
@@ -4047,7 +3599,7 @@ $discord->on('init', function (Discord $discord) {
 		}
 
 // word spelling checking and correction
-		if (isset($data['content']) && ( startsWith(strtolower($data['content']),'.spell') || startsWith(strtolower($data['content']),'.spellcheck'))) {
+		if (( startsWith(strtolower($data['content']),'.spell') || startsWith(strtolower($data['content']),'.spellcheck'))) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$message = explode(' ',strtolower($data['content']));
 				$command = $message[0];
@@ -4065,7 +3617,7 @@ $discord->on('init', function (Discord $discord) {
 		}
 
 // word defining and auto-correct		
-		if (isset($data['content']) && ( startsWith(strtolower($data['content']),'.define'))) {
+		if (( startsWith(strtolower($data['content']),'.define'))) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$message = explode(' ',strtolower($data['content']));
 				$command = $message[0];
@@ -4101,7 +3653,7 @@ $discord->on('init', function (Discord $discord) {
 		$kodichans = ['1370142425292738673'];
 
 // emergency stop for player status refresher
-		if ($author == '380675774794956800' && isset($data['content']) && $data['content'] == '.stoploop' ) {
+		if ($author == '380675774794956800' && $data['content'] == '.stoploop' ) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				global $stopLoop;
 				$stopLoop = !$stopLoop;
@@ -4110,7 +3662,7 @@ $discord->on('init', function (Discord $discord) {
 		}
 		
 // stub for testing purposes
-		if ($author == '380675774794956800' && isset($data['content']) && startsWith(strtolower($data['content']), '.testing')) {
+		if ($author == '380675774794956800' && startsWith(strtolower($data['content']), '.testing')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				// $channel = getChannel('1274001261976354886');
 				// $channel = getChannel($data); // 1274001261976354886
@@ -4217,7 +3769,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 		}				
 
 // Chatbot initiatior
-		if (isset($data['content']) && $author !== $GLOBALS['otherID'] && $author !== $GLOBALS['myID'] && ( strpos($data['content'],"<@".$GLOBALS['myID']."> ") !== false && strpos($data['content'],"<@".$GLOBALS['myID']."> ") >= 0 &&  strpos($data['content'],"<@".$GLOBALS['myID']."> ") < 3)) {
+		if ($author !== $GLOBALS['otherID'] && $author !== $GLOBALS['myID'] && ( strpos($data['content'],"<@".$GLOBALS['myID']."> ") !== false && strpos($data['content'],"<@".$GLOBALS['myID']."> ") >= 0 &&  strpos($data['content'],"<@".$GLOBALS['myID']."> ") < 3)) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				
 				//return;
@@ -4242,14 +3794,14 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 		}
 
 // kodi controls		
-		if (isset($data['content']) && strtolower($data['content']) === '.showlist') {
+		if (strtolower($data['content']) === '.showlist') {
 			if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 				$msg = kodi('showlist',null,$data);
 				sendReply($data, $msg);
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.playpause') {
+		if (strtolower($data['content']) === '.playpause') {
 			if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 				$msg = kodi();
 				sendReply($data, $msg);
@@ -4257,7 +3809,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.playall') {
+		if (strtolower($data['content']) === '.playall') {
 			if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 				$msg = kodi('playall');
 				sendReply($data, $msg);
@@ -4265,7 +3817,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.previous') {
+		if (strtolower($data['content']) === '.previous') {
 			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi('previous',null,$data);
@@ -4273,14 +3825,14 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.kodiaudio') {
+		if (strtolower($data['content']) === '.kodiaudio') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi('audiostream',null,$data);
 				sendReply($data, $msg);
 			}
 		}
 
-		if (isset($data['content']) && (strtolower($data['content']) === '.bookmarks' || startsWith(strtolower($data['content']),'.bookmark') || startsWith(strtolower($data['content']),'.unbookmark') || startsWith(strtolower($data['content']),'.resume'))) {
+		if ((strtolower($data['content']) === '.bookmarks' || startsWith(strtolower($data['content']),'.bookmark') || startsWith(strtolower($data['content']),'.unbookmark') || startsWith(strtolower($data['content']),'.resume'))) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$cmds = ['bookmark','unbookmark','bookmarks','resume'];
 				$cmdargs = ['unbookmark','resume'];
@@ -4315,7 +3867,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && (strtolower($data['content']) === '.favs' || startsWith(strtolower($data['content']),'.fav ') || startsWith(strtolower($data['content']),'.unfav ') || startsWith(strtolower($data['content']),'.selfav '))) {
+		if ((strtolower($data['content']) === '.favs' || startsWith(strtolower($data['content']),'.fav ') || startsWith(strtolower($data['content']),'.unfav ') || startsWith(strtolower($data['content']),'.selfav '))) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$cmds = ['fav','favs','bookmarks','selfav'];
 				$cmdargs = ['unbookmark','resume'];
@@ -4348,7 +3900,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.next') {
+		if (strtolower($data['content']) === '.next') {
 			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi('next',null,$data);
@@ -4356,7 +3908,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower(trim($data['content'])) === '.kodi') {
+		if (strtolower(trim($data['content'])) === '.kodi') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				// initWorkspace($data,$wid = null, $new = false, $output = null,$name = '') {
 				initWorkspace($data,'reset',false,kodi('showlist',null,"returnarray"));
@@ -4365,49 +3917,49 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.back') {
+		if (strtolower($data['content']) === '.back') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi("back",null,$data);
 				sendReply($data, $msg);
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.stop') {
+		if (strtolower($data['content']) === '.stop') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi("stop");
 				sendReply($data, $msg);
 			}
 		}
 
-		if ($author == '380675774794956800' && isset($data['content']) && strtolower($data['content']) === '.showhist') {
+		if ($author == '380675774794956800' && strtolower($data['content']) === '.showhist') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi("showhist");
 				sendReply($data, $msg);
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.movies') {
+		if (strtolower($data['content']) === '.movies') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi("movies",null,$data);
 				sendReply($data, $msg);
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.shows') {
+		if (strtolower($data['content']) === '.shows') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi("shows",null,$data);
 				sendReply($data, $msg);
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.sources') {
+		if (strtolower($data['content']) === '.sources') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi("sources",null,$data);
 				sendReply($data, $msg);
 			}
 		}
 
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.playlist')) {
+		if (startsWith(strtolower($data['content']),'.playlist')) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				// $arg  = ['time',["+25 seconds"]];
 				$msg = kodi("getplaylist",null,$data);
@@ -4415,7 +3967,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.skipintro')) {
+		if (startsWith(strtolower($data['content']),'.skipintro')) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$arg  = ['time',["+25 seconds"]];
 				$msg = kodi("seek",$arg,$data);
@@ -4423,7 +3975,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 		
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.seek')) {
+		if (startsWith(strtolower($data['content']),'.seek')) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) )) {
 				$args = explode(' ',$data['content']);
 				
@@ -4456,7 +4008,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && (startsWith(strtolower($data['content']),'.playfrom') || startsWith(strtolower($data['content']),'.queuefrom') || startsWith(strtolower($data['content']),'.queue') || startsWith(strtolower($data['content']),'.unqueue'))) {
+		if ((startsWith(strtolower($data['content']),'.playfrom') || startsWith(strtolower($data['content']),'.queuefrom') || startsWith(strtolower($data['content']),'.queue') || startsWith(strtolower($data['content']),'.unqueue'))) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$args = explode(' ',$data['content']);
 				// if (trim($args[1]) == 'random') {
@@ -4517,7 +4069,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && (startsWith(strtolower($data['content']),'.select') || startsWith(strtolower($data['content']),'.play') || startsWith(strtolower($data['content']),'.continue'))) {
+		if ((startsWith(strtolower($data['content']),'.select') || startsWith(strtolower($data['content']),'.play') || startsWith(strtolower($data['content']),'.continue'))) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 
 				$cmds = ['play','continue','select'];
@@ -4551,7 +4103,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.yt')) {
+		if (startsWith(strtolower($data['content']),'.yt')) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$ytcmds = ['ytplay','ytsearch','ytp','yts'];
 				$args = explode(' ',$data['content']);
@@ -4571,7 +4123,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 		}
 
 // Youtube download
-		if (isset($data['content']) && startsWith(strtolower($data['content']), '.dlyt ')) {
+		if (startsWith(strtolower($data['content']), '.dlyt ')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 
 				$args = explode(' ',trim($data['content']));
@@ -4604,7 +4156,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 		}
 
 // Initiate DM with user (fix for discord DM glitch)
-		if (!$dmMode && isset($data['content']) && strtolower($data['content']) === '.juiceme') {
+		if (!$dmMode && strtolower($data['content']) === '.juiceme') {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				sendReply($data, "https://tenor.com/view/alone-gif-8541857");
 				sendMsg($author,"I am a kitty cat and I dance dance dance!");
@@ -4612,7 +4164,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.fortune') {
+		if (strtolower($data['content']) === '.fortune') {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$fortune = new Fortune();
 				@$msg = $fortune->QuoteFromDir("fortune_data/");
@@ -4626,21 +4178,21 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && ( strtolower($data['content']) === '.headpats' || strtolower($data['content']) === '.pet' || strtolower($data['content']) === '.joy' || strtolower($data['content']) === '.givepets')) {
+		if (( strtolower($data['content']) === '.headpats' || strtolower($data['content']) === '.pet' || strtolower($data['content']) === '.joy' || strtolower($data['content']) === '.givepets')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				sendReply($data, "https://www.crystalshouts.com/grahaears.gif");
 				return;
 			}
 		}
 
-		if (isset($data['content']) && ( strtolower($data['content']) === '.dance' || strtolower($data['content']) === '.shimmy')) {
+		if (( strtolower($data['content']) === '.dance' || strtolower($data['content']) === '.shimmy')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				sendReply($data, "https://www.eorzeanshouts.com/grahashimmy.gif");
 				return;
 			}
 		}
 
-		if (isset($data['content']) && ( strtolower($data['content']) === '.feedthetia' || strtolower($data['content']) === '.givetaco' || strtolower($data['content']) === '.feedgraha')) {
+		if (( strtolower($data['content']) === '.feedthetia' || strtolower($data['content']) === '.givetaco' || strtolower($data['content']) === '.feedgraha')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$user = getUser($author);
 				sendReply($data, "https://www.crystalshouts.com/graha.gif \nOm nom nom!");
@@ -4648,14 +4200,14 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && strtolower($data['content']) === '.poke') {
+		if (strtolower($data['content']) === '.poke') {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				// $user = getUser($author);
 				sendReply($data, "https://www.crystalshouts.com/grahatu.gif");
 			}
 		}
 
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.tzconvert')) {
+		if (startsWith(strtolower($data['content']),'.tzconvert')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$user = getUser($author);
 				$tz = explode(' ',str_ireplace(' AM  ','AM ',str_replace(' PM ','PM ',str_replace('  ',' ',str_ireplace(['to ','.tzconvert '],'',strtoupper($data['content']))))));
@@ -4691,7 +4243,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && ( strtolower($data['content']) === 'hello computer' || strtolower($data['content']) === '.help')) {
+		if (( strtolower($data['content']) === 'hello computer' || strtolower($data['content']) === '.help')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$output = getUser($author);
 				$defaulteurl = "(None)";
@@ -4710,7 +4262,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && (strtolower($data['content']) === '.botprod' || strtolower($data['content']) === '.botproud' || strtolower($data['content']) === '.pushprod')) {
+		if ((strtolower($data['content']) === '.botprod' || strtolower($data['content']) === '.botproud' || strtolower($data['content']) === '.pushprod')) {
 			if ($author == '380675774794956800') {
 				sendReply($data, "Pushing Dev Changes....");
 				shell_exec("cd /home/shayne/vbot/crystalbot/ && cp csbot.php csbot.php.bak && cp csbot-dev.php csbot.php");
@@ -4720,7 +4272,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			} else { sendReply('380675774794956800', "bad auth from $author <@$author>"); sendReply($data,"https://www.crystalshouts.com/noauth.jpg");	}
 		}
 
-		if (isset($data['content']) && (strtolower($data['content']) === '.reboot' || strtolower($data['content']) === '.reset')) {
+		if ((strtolower($data['content']) === '.reboot' || strtolower($data['content']) === '.reset')) {
 			if ($author == '380675774794956800') {// || $author = $GLOBALS['otherID']) {
 				$channelid = $data['channel_id'];
 				$guildid = $data['guild_id'];
@@ -4738,7 +4290,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			} else { sendReply('380675774794956800', "bad auth from $author <@$author>"); sendReply($data,"https://www.crystalshouts.com/noauth.jpg");	}
 		}
 
-		if (isset($data['content']) && startsWith(strtolower($data['content']),'.happydance')) {
+		if (startsWith(strtolower($data['content']),'.happydance')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				$hdances = [
 					"https://www.crystalshouts.com/happydance.gif",
