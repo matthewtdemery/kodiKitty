@@ -558,168 +558,52 @@ function updateMsg($data, $message = '', $embed = NULL) {
 
 // Turn a youtube URL into an mp3
 function youtubedl($url) {
-	
 	var_dump("YOUTUBE DL URL",$url);
 
+	/**
+	 * Sample PHP code for youtube.videos.list
+	 * See instructions for running these code samples locally:
+	 * https://developers.google.com/explorer-help/code-samples#php
+	 */
 
+	if (!file_exists(__DIR__ . '/vendor/autoload.php')) {
+		throw new Exception(sprintf('Please run "composer require google/apiclient:~2.0" in "%s"', __DIR__));
+	}
+	// require_once __DIR__ . '/vendor/autoload.php';
 
+	$client = new Google_Client();
+	$client->setApplicationName('API code samples');
+	$client->setScopes([
+			'https://www.googleapis.com/auth/youtube.readonly',
+	]);
 
+	// TODO: For this request to work, you must replace
+	//       "YOUR_CLIENT_SECRET_FILE.json" with a pointer to your
+	//       client_secret.json file. For more information, see
+	//       https://cloud.google.com/iam/docs/creating-managing-service-account-keys
+	$client->setAuthConfig('client_secret.json');
+	$client->setAccessType('offline');
 
+	// Request authorization from the user.
+	$authUrl = $client->createAuthUrl();
+	printf("Open this link in your browser:\n%s\n", $authUrl);
+	print('Enter verification code: ');
+	$authCode = trim(fgets(STDIN));
 
-/**
- * Sample PHP code for youtube.videos.list
- * See instructions for running these code samples locally:
- * https://developers.google.com/explorer-help/code-samples#php
- */
+	// Exchange authorization code for an access token.
+	$accessToken = $client->fetchAccessTokenWithAuthCode($authCode);
+	$client->setAccessToken($accessToken);
 
-if (!file_exists(__DIR__ . '/vendor/autoload.php')) {
-  throw new Exception(sprintf('Please run "composer require google/apiclient:~2.0" in "%s"', __DIR__));
-}
-require_once __DIR__ . '/vendor/autoload.php';
+	// Define service object for making API requests.
+	$service = new Google_Service_YouTube($client);
 
-$client = new Google_Client();
-$client->setApplicationName('API code samples');
-$client->setScopes([
-    'https://www.googleapis.com/auth/youtube.readonly',
-]);
+	$queryParams = [
+			'id' => 'Ks-_Mh1QhMc'
+	];
 
-// TODO: For this request to work, you must replace
-//       "YOUR_CLIENT_SECRET_FILE.json" with a pointer to your
-//       client_secret.json file. For more information, see
-//       https://cloud.google.com/iam/docs/creating-managing-service-account-keys
-$client->setAuthConfig('client_secret.json');
-$client->setAccessType('offline');
+	$response = $service->videos->listVideos('snippet,contentDetails,statistics', $queryParams);
+	return print_r($response,true);
 
-// Request authorization from the user.
-$authUrl = $client->createAuthUrl();
-printf("Open this link in your browser:\n%s\n", $authUrl);
-print('Enter verification code: ');
-$authCode = trim(fgets(STDIN));
-
-// Exchange authorization code for an access token.
-$accessToken = $client->fetchAccessTokenWithAuthCode($authCode);
-$client->setAccessToken($accessToken);
-
-// Define service object for making API requests.
-$service = new Google_Service_YouTube($client);
-
-$queryParams = [
-    'id' => 'Ks-_Mh1QhMc'
-];
-
-$response = $service->videos->listVideos('snippet,contentDetails,statistics', $queryParams);
-return print_r($response,true);
-
-
-
-
-
-
-
-
-
-
-
-
-
-// require_once '../vendor/autoload.php';
-
-$yt = new \YoutubeDownloader\YoutubeDownloader();
-
-//If you save your id or key from last session
-//you can use it hier
-
-$yt->registerIdKey($GLOBALS['ridk']);
-
-//device registration function
-//you can grab from here the device id/key
-//and save it somewhere for later use
-//$registrationResponse = $yt->registerDevice();
-
-//if you want to save the user agent
-//for next use you can do it by this
-//$yt->getUserAgent()->toArray();
-
-//here you need to initialize the DeviceModel
-//and just pass it here
-//$yt->setUserAgent($user_agent);
-
-$playerResponse = $yt->playerRequest->fetch_player_info('6eqp7RMi04U'); // here we pass the video id
-
-$echoString = "Video Id: " . $playerResponse->getVideoInfo()->getVideoId() . "\n";
-$echoString .= "Video Tittle: " . $playerResponse->getVideoInfo()->getTittle() . "\n";
-$echoString .= "Video duration: " . $playerResponse->getVideoInfo()->getDuration() . "\n";
-$echoString .= "Uploaded on Channel: " . $playerResponse->getVideoInfo()->getChannel() . "\n";
-$echoString .= "Video Description: " . $playerResponse->getVideoInfo()->getDescription() . "\n\n";
-
-/**
- * @var $videos video[]
- */
-$videos = $playerResponse->getPlayerVideos()->getVideos(); //it can happen that you have audio in video
-/**
- * @var $audios audio[]
- */
-$audios = $playerResponse->getPlayerVideos()->getAudios(); //it can happen that you have video in audio
-
-
-$echoString .= "============== Videos ==============\n";
-foreach ($videos as $video) {
-    $echoString .= "Video URL: " . $video->getVideoUrl() . "\n";
-    $echoString .= "Video format: " . $video->getFormat() . "\n";
-    $echoString .= "Video Size Format: " . $video->getSizeFormat() . "\n";
-    $echoString .= "Video Size: " . $video->getSize() . "\n\n";
-
-}
-$echoString .= "====================================\n\n";
-
-$echoString .= "============== Audios ==============\n";
-foreach ($audios as $video) {
-    $echoString .= "Audio URL: " . $video->getAudioUrl() . "\n";
-    $echoString .= "Audio format: " . $video->getFormat() . "\n";
-    $echoString .= "Audio Size Format: " . $video->getSizeFormat() . "\n\n";
-
-}
-$echoString .= "====================================\n";
-
-//comment this if you run this in a browser
-// echo $echoString;
-return $echoString;
-
-//uncomment this if you run this in a browser
-//echo str_replace("\n", "</br>", $echoString);
-return;
-
-
-	
-// $youtube = new YouTubeDownloader();
-	// try {
-			// $downloadOptions = $youtube->getDownloadLinks($url);
-			// var_dump($downloadOptions);
-			// if ($downloadOptions->getAllFormats()) {
-					// return $downloadOptions->getFirstCombinedFormat()->url;
-			// } else {
-					// return 'No links found';
-			// }
-	// } catch (YouTubeException $e) {
-		// var_dump($e);
-			// return 'Something went wrong: ' . $e->getMessage();
-	// }	
-	// $youtube = new YouTubeDownloader();
-
-// try {
-    // $downloadOptions = $youtube->getDownloadLinks($url);
-		// var_dump('DOWNLOADOPTIONS',$downloadOptions);
-
-    // if ($downloadOptions->getAllFormats()) {
-        // $ret = $downloadOptions->getFirstCombinedFormat()->url;
-    // } else {
-        // $ret = 'No links found';
-    // }
-
-	// } catch (YouTubeException $e) {
-			// var_dump("eeeeeeeeeeeeeeeeeeeEEEEEEEEEEEEEEEEEEE",$e,$e->getMessage());
-			// $ret = 'Something went wrong: ' . $e->getMessage();
-	// }
 
     try {
         // Instantly download a YouTube video (using the default settings).
@@ -1620,7 +1504,6 @@ function popFMap($did,$array = false) {
 		var_dump("$did has no favorites yet");
 		return "You have no favourites saved yet!";
 	}
-	//$did = $arg[1];
 	$results = "__**Favourites**__\n";
 
 	$ikey = 0;
@@ -1635,10 +1518,7 @@ function popFMap($did,$array = false) {
 		$n = $fm['name'];
 		$f = $fm['file'];
 		$dirTemplate = [];
-		// $t = json_decode($bm['time'],true);
-		// unset($t['milliseconds']);
 		$fmap[$did][$ikey] = [$id,$f];
-		// $time = implode(':',array_map('padInt',$t));
 		$time = $ttime = '';
 		$position = $total = false;
 		if ($fm['time']) {
@@ -1661,14 +1541,13 @@ function popFMap($did,$array = false) {
 		$bmmap[$did][$ikey] = [$id,$f];
 		$results .= "[$ikey]: $n $time \n";
 
-
-	$dirTemplate = [
-		"title"=> "",
-		"thumbnail"=> "",
-		"file"=> $f,
-		"filetype"=> $type,
-		"label"=> $n
-	];
+		$dirTemplate = [
+			"title"=> "",
+			"thumbnail"=> "",
+			"file"=> $f,
+			"filetype"=> $type,
+			"label"=> $n
+		];
 
 		if ($total) {
 			$dirTemplate['runtime'] = $total;
@@ -1677,18 +1556,7 @@ function popFMap($did,$array = false) {
 		if ($position) {
 			$dirTemplate['resume']['position'] = $position;
 		}
-
 		$dirs[] = $dirTemplate;
-
-		// "resume": {
-				// "position": 2426.923328,
-				// "total": 2834.091
-		// },
-		// "runtime": 2834,
-		
-		
-		// $results .= "  $key [$ikey]: $n $time \n";
-		
 	}
 	file_put_contents('fsdirs.json',json_encode($dirs, JSON_PRETTY_PRINT));
 	var_dump($fmap[$did]);
@@ -1698,9 +1566,7 @@ function popFMap($did,$array = false) {
 
 function kodiCurItem($gettitle = false) {
 	global $_Kodi;
-	// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
 	$json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
-//	$json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","artist","file","mediapath"]],"id":10}';
 	$ftitle = $curitem = null;
 	$res = $_Kodi->sendJson($json);
 	var_dump($json,$res);
@@ -1722,7 +1588,7 @@ function kodiCurItem($gettitle = false) {
 			if (!$name) { $name = $title; }
 			if (!$name) { $name = $filename; }
 			$ftitle = kodiTitle($name,$artist,$file);
-		}// else {
+		}
 		if ($res['result']['item']['mediapath']) {
 			$curitem = $res['result']['item']['mediapath'];
 		} else {
@@ -1733,7 +1599,6 @@ function kodiCurItem($gettitle = false) {
 		$curitem = [$curitem,$ftitle];
 	}
 	return $curitem;
-	
 }
 
 $lastStatusData = [];
@@ -1967,11 +1832,8 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 			
 			$key = $arg[0];
 			if (!$key) {
-				if (!$arg[2]) {
-					return "You must be in the tv room channel to do this!";
-				}
+				if (!$arg[2]) {	return "You must be in the tv room channel to do this!"; }
 				$type = 'file';
-				// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
 				$json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","resume","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
 				$res = $_Kodi->sendJson($json);
 				file_put_contents('bookmark5435.json',json_encode($res, JSON_PRETTY_PRINT));
@@ -2007,7 +1869,6 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 				if (!isset($kodi['menu'][$key])) {
 					return "7890f80: Invalid selection: $arg";			
 				}
-// $kodi['menu'][$key] = [$type,$path,$watchedbool,$name];
 				$sel = $kodi['menu'][$key];
 				$name = $sel[3];
 				$file = $sel[1];
@@ -2037,9 +1898,7 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 				$id = $stmt->fetch(PDO::FETCH_ASSOC)['id'];
 				var_dump("-----------ID-----------",$id);
 				$key = intval(array_key_last($bmmap[$did]));
-				while (isset($bmmap[$did][$key]) && $key < 200) {
-					$key++;
-				}
+				while (isset($bmmap[$did][$key]) && $key < 200) {	$key++;	}
 				$bmmap[$did][$key] = [$id,$file];
 				var_dump($bmmap[$did]);
 				return "Bookmark added!";
@@ -2075,43 +1934,28 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 				return "Data error 8192";
 			}
 		break;
+		case "favs":
+			$fav=true;
 		case "bookmarks":
-			$query = "SELECT * FROM bookmarks WHERE did=:did";
+			list($table,$fname) = ($fav)?['favs','favorites']:['bookmarks','bookmarks'];
+			$query = "SELECT * FROM $table WHERE did=:did";
 			$did = $arg[1];
 
 			include('db.php');
 			$stmt = $dbconn->prepare($query);                
 			if (!$stmt->execute(['did' => $did])) {
-				return "Data error 42";
+				return "Data error 42 $table";
 			}
 
 			$bms = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 			if (!$bms) {
-				return "You have no bookmarks yet";
+				return "You have no $fname yet";
 			}
-			// $results = "__**Bookmarks**__\n";
-			// $ikey = 0;
-			// $bmmap[$did] = [];
-			// var_dump($bms);
-			// foreach ($bms AS $key => $bm) {
-				// $ikey++;
-				// $id = $bm['id'];
-				// $f = $bm['file'];
-				// $n = $bm['name'];
-				// $time = '';
-				// if ($bm['time']) {
-					// $t = json_decode($bm['time'],true);
-					// unset($t['milliseconds']);
-					// $time = "at ".implode(':',array_map('padInt',$t));
-				// }
-				// $bmmap[$did][$ikey] = [$id,$f];
-				// $results .= "[$ikey]: $n $time \n";
-			//}
-						var_dump($bms,'00000000000000');
+			var_dump($bms,'00000000000000');
 
 			$dirs = popBMMap($did,true);
-			$output = renderDir($dirs,"bookmarks",kodiCurItem(),($data || $array));
+			$output = renderDir($dirs,$table,kodiCurItem(),($data || $array));
 			// var_dump($results,$did);
 			var_dump($dirs,$output,$did);
 			// return $results;
@@ -2610,9 +2454,6 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 					$path = $kodi['paths'][0];
 				}
 			}
-			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","mediapath","artist","duration","runtime","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
-			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","mediapath","artist","duration","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
-			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","artist","file","playcount","lastplayed","mimetype","resume","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 
 			if ($path == 'queue') {
 				$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
@@ -2649,7 +2490,6 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 		case "play":
 			$playcmd = true;
 			if (($arg == 'random' && $action == 'play') || $queuecmd) {
-				//$playcmd = true;
 				if ($queuecmd) {
 					if ($kodi['queuerandom'] === false) {
 						if (isset($kodi['path'])) {
@@ -2679,14 +2519,8 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 			file_put_contents('lkodi.json',json_encode($lkodi, JSON_PRETTY_PRINT));
 			$curitem = $curpath = null;
 			$curitem = kodiCurItem();
-			// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","artist","thumbnail","file","mediapath","resume","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
-			// $res = $_Kodi->sendJson($json);
-			// if ($res['result'] && $res['result']['item']['file']) {
-				// $curitem = $res['result']['item']['file'];
-			// }
 			if (!is_array($arg)) {
 				if ($arg == 'random') {
-					// if (!count($kodi['hist'])) {
 					if (isset($kodi['path'])) {
 						$path = $kodi['path'];
 					} else if (count($kodi['hist'])) {
@@ -2700,7 +2534,6 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 						$output = renderDir($dirs,$path,$curitem,($data));
 						$menu = $kodi['menu']; 
 					} else {
-						//$output = renderDir($dirs,$path,$curitem);
 						$menu = $lkodi['menu']; 
 					}
 					var_dump($dirs,$path);
@@ -2736,11 +2569,7 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 			var_dump($selection);
 			if ($selection[0] == 'directory') {
 				$path = $selection[1];
-				// $kodi['hist'][] = $path;
-				// $output = "\n$path\n";
 				$output = "\n";
-				// $dirs = $_Kodi->getDirectory(addcslashes($path,'\'), 1);
-				// $dirs = getDir($path)['result']['files'];
 				$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","runtime","resume","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 				$dirs = $_Kodi->sendJson($json);
 				$kodi['dirs'] = $dirs;
@@ -2751,33 +2580,13 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 
 				if ($kerr = kodiError($dirs)) { return $kerr; }
 
-				// $curitem = null;
-				// $json = '{"jsonrpc":"2.0","method":"Player.GetItem","params":[1,["title","thumbnail","mediapath","file","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid","fanart"]],"id":10}';
-				// $res = $_Kodi->sendJson($json);
-				// if ($res['result'] && $res['result']['item']['file']) {
-					// $curitem = $res['result']['item']['file'];
-				// }
-				// $lpath = $kodi['path'];
 				$output = renderDir($dirs,$path,$curitem,($data));
 				$curpath = $path;
 				if ($kodi['queuerandom']) {
-					//$lpath = array_reverse(explode('/',rtrim(urldecode($path),'/')))[0];
-					// $lpath = explode('/',rtrim($path,'/'));
-					// $lpath = array_pop($lpath);
-//					sendReply($data,"Descending into $lpath and rolling the dice again...");
-
 					$output = kodi('queuerandom',null,$data);
-					
-				// } else {
 				} else if ($kodi['playrandom']) {
 					$lpath = array_reverse(explode('/',rtrim(urldecode($path),'/')))[0];
-					// $lpath = explode('/',rtrim($path,'/'));
-					// $lpath = array_pop($lpath);
-//					sendReply($data,"Descending into $lpath and rolling the dice again...");
-
 					$output = kodi('play','random',$data);
-					
-				// } else {
 				} else if (!isset($dirs['error'])) {
 					$l = $dirs['result']['files'];
 					$ac = array_column($l,'filetype');
@@ -2804,54 +2613,22 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 
 						$output = renderDir($kodi['dirs'],$path,$curpath,($data));
 					}
-					
-//				} else {
-					
 				}
-				// $dirs = $dirs['result']['files'];
-				// $kodi['path'] = $path;
-				// $kodi['menu'] = [];
-				// foreach ($dirs AS $key => $item) {
-					// $name = $item['label'];
-					// $type = $item['filetype'];
-					// $path = $item['file'];
-					// $kodi['menu'][$key] = [$type,$path];
-					// $watched = '🔲';
-					// if (isset($item['playcount']) && $item['playcount'] == 1) {
-						// $watched = "✅";
-					// }
-					// if ($type == 'directory') {
-						// $watched = '📁';
-					// }
-					
-					// $output .= " $watched$key: $name \n";
-				// }
-				
 			} else {
 				if (!$kodi['queuerandom']) {
 					if ($curitem) { 
 						$_Kodi->stop();
 						usleep(1000000);
-						//usleep(2000000);
 					}
 					$kodi['playing'] = intval($arg);
 					$kodi['playfile'] = $selection[1];
 					$kodi['playfilename'] = $selection[3];
-					// $output = $_Kodi->openFile(addcslashes($selection[1],'\\'))['result'];
-					// usleep(1500000);
 					$t =  $selection[4];
 					if ($t !== 0) {
 						global $lastStatusPlayer;
 						$lastStatusPlayer[5] = "You can resume where you left off by clicking Play";
 						$resumeData = $t;
 					}
-					// if (!isset($resumefile) && $t !== 0) {
-						// $tres = gmdate("H:i:s", $t);
-						// sendReply($data,"You can resume playing this video from $tres by using `.continue $arg`");
-					// } else if ($t !== 0) {
-						// global $gseek;
-						// $gseek = $t;
-					// }
 				}
 				if ($kodi['queuerandom']) {
 					$kodi['path'] = $kodi['queuerandom'];
@@ -2859,72 +2636,39 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 					$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","thumbnail","file","artist","genre","year","rating","album","track","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"],"limits":{"start":0}}}';
 					$inum = count($output = $_Kodi->sendJson($json)['result']['items']);
 					
-					
 					var_dump('FOOOOOOOOOOOO',$inum,$json,$output);
-					//$outputb = $output;
 					$selectionone = $selection[1];
-					//file_put_contents('playlistoutput.json',json_encode($outputb));
 					if (in_array($selectionone,array_column($output,'file'))) {
 						$kodi['path'] = $kodi['queuerandom'];
 						$output = kodi('queuerandom',null,$data);
 						return;
 					}
-
 					$json = '[{"jsonrpc":"2.0","method":"Playlist.Insert","params":[1,'.intval($inum).',{"file":"'.addcslashes($selection[1],'\\').'"}],"id":2209}]';
-					// var_dump('FOOOOOOOOOOOO111111111111111111111',$inum,$json);
 					$addq = $_Kodi->sendJson($json);
 					var_dump($addq);
-					// $curitem = kodiCurItem();
 					$json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
 					$output = $_Kodi->sendJson($json);
 					$output = renderQueue($output,$curitem);
 					var_dump('3333333333333333333333333333333',$output);
 					break;
-				
 				} else if ($kodi['playrandom']) {
-
-					// if (isset($kodi['path'])) {
 					$kodi['path'] = $kodi['playrandom'];
 					$kodi['playrandom'] = false;
-					// } else if (count($kodi['hist'])) {
-						// $path = array_pop($kodi['hist']);
-					// } else {
-						// $path = $kodi['paths'][0];
-					// }
-
-
-
-				//} else {
 				}
 				$_Kodi->openFile(addcslashes($selection[1],'\\'));
 
 				setVoiceStatus("Playing ".$selection[3]);
 				var_dump(fixKodiAudio());
 				if ($data) { $data = null; }
-			// $output = "playing ".$selection[1];
 			}
 		
 		break;
 		case "back":
 			var_dump($kodi['hist']);
-			// $curpath = $path;
 			$path = array_shift($kodi['hist']);
 			$path = array_shift($kodi['hist']);
-			// if ($path === $curpath) {
-				// $path = array_shift($kodi['hist']);
-			// }
-			// if (1===count($kodi['hist'])) {
-				// $path = array_shift($kodi['hist']);
-			// }
 			if (!count($kodi['hist'])) {
 				$path = $kodi['paths'][0];
-				// $path = "multipath://D%3a%5ctv%5c/E%3a%5ctv%5c/F%3a%5ctv%5c/G%3a%5ctv%5c/smb%3a%2f%2f192.168.12.3%2fshayne%2ftv%2f/C%3a%5ctv%5c/";
-				// $kodi['hist'][] = $path;
-				// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
-				// $dirs = $_Kodi->sendJson($json);
-				// $dirs = $_Kodi->getDirectory($path, 1);
-			// } else {
-				// $kodi['hist'][] = $path;
 			}
 			
 			$did = false;
@@ -2945,16 +2689,12 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 			}
 
 			if ($path == 'sources') {
-				// $json = '{"jsonrpc":"2.0","method":"Playlist.GetItems","id":"1742821847813","params":{"playlistid":1,"properties":["title","showtitle","thumbnail","mediapath","file","resume","artist","genre","year","rating","album","track","runtime","duration","playcount","dateadded","episode","artistid","albumid","tvshowid"]}}';
-				// $output = $_Kodi->sendJson($json);
-				// $output = renderQueue($output,kodiCurItem());
 				$json = '{"jsonrpc":"2.0","method":"Files.GetSources","params":["video"],"id":1}'; //,{"jsonrpc":"2.0","method":"Files.GetSources","params":["music"],"id":2},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.audio","unknown",true,["path","name"]],"id":3},{"jsonrpc":"2.0","method":"Addons.GetAddons","params":["xbmc.addon.video","unknown",true,["path","name"]],"id":4}]';
 				$dirs = $_Kodi->sendJson($json);
 				$dirs['result']['files'] = $dirs['result']['sources'];
 				$output = renderDir($dirs,'sources',kodiCurItem(),($data));
 				break;
 			}
-			// $json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","lastplayed","mediapath","artist","duration","runtime","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 			$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.addcslashes($path,'\\').'","media":"video","properties":["title","file","playcount","runtime","resume","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 			$dirs = $_Kodi->sendJson($json);
 			if ($dirs == NULL) {
@@ -2962,24 +2702,7 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 				$json = '{"jsonrpc":"2.0","id":"1","method":"Files.GetDirectory","params":{"directory":"'.$path.'","media":"video","properties":["title","file","playcount","runtime","resume","lastplayed","mimetype","thumbnail","dateadded"],"sort":{"method":"none","order":"ascending"}}}';
 				$dirs = $_Kodi->sendJson($json);
 			}
-				// $dirs = $_Kodi->getDirectory(addcslashes($path,'\'), 1);
-			//$output = "\n";
-			// $dirs = $dirs['result']['files'];
 			$output = renderDir($dirs,$path,kodiCurItem(),($data));
-			// $kodi['path'] = $path;
-			// $kodi['menu'] = [];
-			// foreach ($dirs AS $key => $item) {
-				// $name = $item['label'];
-				// $type = $item['filetype'];
-				// $path = $item['file'];
-				// $kodi['menu'][$key] = [$type,$path];
-				
-				// $output .= " #$key: [$type] $name \n";
-			// }
-
-
-			// $output = $_Kodi->stop()['result'];
-			//$output = renderDir($dirs,$path);
 		break;
 		case "showhist":
 			$output = niceList($kodi['hist']);
@@ -3009,9 +2732,8 @@ function kodi($action = "playPause",$arg = null,$data = false) {
 				$output = 'video id error';
 				return 'video id error';
 			}
-			var_dump($matches);
+			// var_dump($matches);
 			$json = '{"jsonrpc":"2.0","method":"Player.Open","params":{"item":{"file":"plugin://plugin.video.youtube/play/?video_id='.$vid.'"}},"id":"1"}';
-			// $output = $_Kodi->stop()['result'];
 			$output = $_Kodi->sendJson($json)['result']." - $vid";
 
 			usleep(250000);
@@ -3416,16 +3138,6 @@ function contains($str, array $arr) {
 	return false;
 }
 
-function gsearch($q) {
-	$key = $GLOBALS['gkey'];
-  // $header = 'Accept: application/json';
-	$eid = $GLOBALS['geid'];
-	// $url = "https://customsearch.googleapis.com/customsearch/v1?key=$key&cx=$eid";
-	$q = urlencode($q);
-	$jurl = "https://customsearch.googleapis.com/customsearch/v1?key=$key&cx=$eid&q=$q";
-	return json_decode(file_get_contents($jurl),true);
-}
-
 function endsWith( $haystack, $needle ) {
   $length = strlen( $needle );
   if( !$length ) {
@@ -3548,9 +3260,8 @@ $playlistArray = [
 ];
 	
 $playlistArray = $nums + $playlistArray;
-// 'playpause' => '⏯',
+
 $playerArray = [
-	// 'taco' => '🌮',
 	'tprev' => '⏮',
 	'rw' => '⏪',
 	'stop' => '⏹️',
@@ -3566,8 +3277,7 @@ $emoteArray = $playerArray + $playlistArray;
 array_shift($playlistArray);
 
 function sendData($channel,$data, $mode) {
-		$myToken = $GLOBALS['myToken'];
-	// $data = ;
+	$myToken = $GLOBALS['myToken'];
 	$data_string = json_encode($data);
 	$ch = curl_init('https://discord.com/api/v10/channels/' . $channel . "/$mode");
 	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
@@ -3760,118 +3470,97 @@ $reactConnector = new \React\Socket\Connector(['dns' => '1.1.1.1', 'timeout' => 
 $connector = new \Ratchet\Client\Connector($loop, $reactConnector);
 $kevents = [];
 
-
 $connector('ws://localhost:9099')->then(function($conn) {
-    $conn->on('message', function($msg) use ($conn) {
-        global $kevents;
-        global $gseek;
-        global $kodi;
-        global $lastStatusPlayer;
-				echo "Received: {$msg}\n";
-				$msg = json_decode($msg,true);
-				$kevents[$msg['method']] = $msg;
-				file_put_contents('kevents.json',json_encode($kevents, JSON_PRETTY_PRINT));
-				if ($msg['method'] == 'Player.OnStop') {
-					global $statusTimer;
-					global $loop;
-					if ($statusTimer !== NULL) { $loop->cancelTimer($statusTimer); $statusTimer = NULL; }
-					$lastStatusPlayer[0] = "Stopped";
-					$lastStatusPlayer[1] = "";
-					$lastStatusPlayer[2] = "00:00:00";
-					$lastStatusPlayer[3] = "00:00:00";
-					$lastStatusPlayer[4] = 0;
-					$lastStatusPlayer[5] = "";
-					setVoiceStatus('');
-					playerStatus('useArray');
-					$kodi['playfile'] = $kodi['playfilename'] = null;
-				}
-				if ($msg['method'] == 'Player.OnPause') {
-						// $lastStatusPlayer = [$state,$play,$pcnt,$curtime,$endtime];
-						$lastStatusPlayer[0] = "Paused";
-						if (!isset($msg['params']['data']['item']['title'])) {
-							list($curitem,$kodi['playfilename']) = kodiCurItem(true);
-						}
-						if (!$kodi['playfilename']) {
-							$kodi['playfilename'] = $msg['params']['data']['item']['title'];
-						}
-						$lastStatusPlayer[1] = $kodi['playfilename'];
-						playerStatus('useArray');
-					setVoiceStatus("Paused ".$kodi['playfilename']);
-				} else if ($msg['method'] == 'Player.OnResume') {
-					if (!$kodi['playfilename']) {
-					// if (!isset($msg['params']['data']['item']['title'])) {
-					// $curitem = kodiCurItem(true);
+	$conn->on('message', function($msg) use ($conn) {
+		global $kevents;
+		global $gseek;
+		global $kodi;
+		global $lastStatusPlayer;
+		echo "Received: {$msg}\n";
+		$msg = json_decode($msg,true);
+		$kevents[$msg['method']] = $msg;
+		file_put_contents('kevents.json',json_encode($kevents, JSON_PRETTY_PRINT));
+		if ($msg['method'] == 'Player.OnStop') {
+			global $statusTimer;
+			global $loop;
+			if ($statusTimer !== NULL) { $loop->cancelTimer($statusTimer); $statusTimer = NULL; }
+			$lastStatusPlayer[0] = "Stopped";
+			$lastStatusPlayer[1] = "";
+			$lastStatusPlayer[2] = "00:00:00";
+			$lastStatusPlayer[3] = "00:00:00";
+			$lastStatusPlayer[4] = 0;
+			$lastStatusPlayer[5] = "";
+			setVoiceStatus('');
+			playerStatus('useArray');
+			$kodi['playfile'] = $kodi['playfilename'] = null;
+		}
+		if ($msg['method'] == 'Player.OnPause') {
+				// $lastStatusPlayer = [$state,$play,$pcnt,$curtime,$endtime];
+				$lastStatusPlayer[0] = "Paused";
+				if (!isset($msg['params']['data']['item']['title'])) {
 					list($curitem,$kodi['playfilename']) = kodiCurItem(true);
-					// var_dump($msg,$curitem,'4444444444455555555555555555555555555555');
-					// $kodi['playfilename'] = $curitem[1];
-					// $curitem = $curitem[0];
-					// }
-					// $kodi['playfilename'] = $msg['params']['data']['item']['title'];
 				}
-				setVoiceStatus("Playing ".$kodi['playfilename']);
+				if (!$kodi['playfilename']) {
+					$kodi['playfilename'] = $msg['params']['data']['item']['title'];
+				}
+				$lastStatusPlayer[1] = $kodi['playfilename'];
+				playerStatus('useArray');
+			setVoiceStatus("Paused ".$kodi['playfilename']);
+		} else if ($msg['method'] == 'Player.OnResume') {
+			if (!$kodi['playfilename']) {
+			list($curitem,$kodi['playfilename']) = kodiCurItem(true);
+		}
+		setVoiceStatus("Playing ".$kodi['playfilename']);
+		$lastStatusPlayer[0] = "Playing";
+		$lastStatusPlayer[1] = $kodi['playfilename'];
+		playerStatus('useArray');
+	} 
+	if ($msg['method'] == 'Player.OnPlay') {
+		list($curitem,$kodi['playfilename']) = kodiCurItem(true);
+		setVoiceStatus("Playing ".$kodi['playfilename']);
+		if (!startsWith($curitem,'plugin://plugin.video.youtube/play/?video_id')) {
+			$lastStatusPlayer[0] = "Playing";
+			$lastStatusPlayer[1] = $kodi['playfilename'];
+			playerStatus('useArray');
+			if (isset($kodi['onPlay']) && $kodi['onPlay']) {
+				kodi($kodi['onPlay'],null,$kodi['data']);
+				$kodi['onPlay'] = false;
+				unset($kodi['data']);
+			}
+
+			if (!$kodi['playfilename']) {
+				$kodi['playfilename'] = $msg['params']['data']['item']['title'];
+			}
+			var_dump('SEEK AND SET TIMEOUT 1',$gseek);
+			if ($gseek !== null) { seekAndSetTimeout($gseek); }
+		}
+	} else if ($msg['method'] == "Player.OnAVStart" || $msg['method'] == 'Other.playback_started') {
+			if (isset($kodi['onPlay']) && $kodi['onPlay']) {
+				kodi($kodi['onPlay'],null,$kodi['data']);
+				$kodi['onPlay'] = false;
+				unset($kodi['data']);
+			}
+			if ( $lastStatusPlayer[0] !== "Playing" ) {
 				$lastStatusPlayer[0] = "Playing";
 				$lastStatusPlayer[1] = $kodi['playfilename'];
 				playerStatus('useArray');
-			} 
-				// if ($gseek === null) {
-					// echo "GSEEK NULL"; return;
-				// }
-				if ($msg['method'] == 'Player.OnPlay') {
-					list($curitem,$kodi['playfilename']) = kodiCurItem(true);
-					setVoiceStatus("Playing ".$kodi['playfilename']);
-					if (!startsWith($curitem,'plugin://plugin.video.youtube/play/?video_id')) {
-						$lastStatusPlayer[0] = "Playing";
-						$lastStatusPlayer[1] = $kodi['playfilename'];
-						playerStatus('useArray');
-						if (isset($kodi['onPlay']) && $kodi['onPlay']) {
-							kodi($kodi['onPlay'],null,$kodi['data']);
-							$kodi['onPlay'] = false;
-							unset($kodi['data']);
-						}
+			}
+			var_dump('22222222222222222SEEK AND SET TIMEOUT',$gseek);
 
-						if (!$kodi['playfilename']) {
-							$kodi['playfilename'] = $msg['params']['data']['item']['title'];
-						}
-					//} else {
-							var_dump('1111111111111111SEEK AND SET TIMEOUT',$gseek);
-
-						if ($gseek !== null) { seekAndSetTimeout($gseek); }
-
-					}
-				} else if ($msg['method'] == "Player.OnAVStart" || $msg['method'] == 'Other.playback_started') {
-						if (isset($kodi['onPlay']) && $kodi['onPlay']) {
-							kodi($kodi['onPlay'],null,$kodi['data']);
-							$kodi['onPlay'] = false;
-							unset($kodi['data']);
-						}
-						if ( $lastStatusPlayer[0] !== "Playing" ) {
-							$lastStatusPlayer[0] = "Playing";
-							$lastStatusPlayer[1] = $kodi['playfilename'];
-							playerStatus('useArray');
-						}
-						var_dump('22222222222222222SEEK AND SET TIMEOUT',$gseek);
-
-						// seekAndSetTimeout($gseek);
-						if ($gseek !== null) { seekAndSetTimeout($gseek); }
-						fruityLooper();
-						//$gseek = false;
-				}
-				// sendMsg('380675774794956800',  json_encode($msg,JSON_PRETTY_PRINT));
-
-        //$conn->close();
-    });
-
-    $conn->send('Hello World!');
+			if ($gseek !== null) { seekAndSetTimeout($gseek); }
+			fixKodiAudio();
+			fruityLooper();
+		}
+	});
+	$conn->send('Hello World!');
 }, function ($e) {
-    echo "Could not connect: {$e->getMessage()}\n";
+	echo "Could not connect: {$e->getMessage()}\n";
 });
 
 function reactionAction($emojianame,$reaction,$name = '') {
 	global $wsLines;
 	global $kodi;
 	$page = 1;
-	// $cid = (array) getChannel($reaction);
-	// var_dump($cid);
 
 	if ($name == 'player') {
 		global $lastStatusData;
@@ -3879,8 +3568,6 @@ function reactionAction($emojianame,$reaction,$name = '') {
 		$lastStatusData = $reaction;
 		$wsarrname = 'player';
 	}
-
-
 
 	var_dump($reaction['channel_id']);
 	$cid = $reaction['channel_id'];
@@ -3891,9 +3578,7 @@ function reactionAction($emojianame,$reaction,$name = '') {
 	if (is_numeric($emojianame)) {
 		$inum = intval($emojianame);
 		$key = ((($page-1)*10)+($inum - 1));
-		// var_dump($kodi['menu'],$page,$inum,'((($page-1)*10)+($inum - 1))',$key);
-		// sendMsg('380675774794956800',  "$page $inum $key");
-		
+			
 		kodi('select',$key,$reaction);
 		return;
 	}
@@ -4011,12 +3696,10 @@ function kodiError($return) {
 
 $discord = new Discord([
 	'token' => $GLOBALS['myToken'],
-	// 'pmChannels' => true,
 	'storeMessages' => true,
 	'loadAllMembers' => true,
 	'intents' => 53608447,
 	'loop' => $loop
-	// 'intents' => Intents::getDefaultIntents() | [Intents::GUILD_MEMBERS,Intents::GUILD_PRESENCES,Intents::MESSAGE_CONTENT] // Enable the `GUILD_MEMBERS` intent
 ]);
 
 $discord->on('init', function (Discord $discord) {
@@ -4088,7 +3771,7 @@ $discord->on('init', function (Discord $discord) {
 			}
 		}
 
-	file_put_contents('reactiondata.json',json_encode($reaction,JSON_PRETTY_PRINT));
+		file_put_contents('reactiondata.json',json_encode($reaction,JSON_PRETTY_PRINT));
 		if ($amDev) { var_dump('$author,$GLOBALS["myID"],$GLOBALS["otherID"]',$author,$GLOBALS['myID'],$GLOBALS['otherID']); }
 		if ($author == $GLOBALS['myID'] || $author == $GLOBALS['otherID']) {
 			if ($amDev) { var_dump('COOOKIESSSSS 899999999999999999'); }
@@ -4096,14 +3779,9 @@ $discord->on('init', function (Discord $discord) {
 			return;
 		}
 
-
-		// $isws = checkWorkspace($data);
 		$isws = checkWorkspace($reaction);
 		if ($amDev) { var_dump('$isws',$isws,$reaction['emoji']->name); }
-		// var_dump($data);
 		var_dump('$reaction');
-		// var_dump($reaction);
-		//var_dump( checkWorkspace($reaction));
 		global $emoteArray;
 		$eaNames = array_flip($emoteArray);
 		$emojiname = $reaction['emoji']->name;
@@ -4116,7 +3794,6 @@ $discord->on('init', function (Discord $discord) {
 			}
 		}					
 
-
 		if ($isws) {
 			if ($isws === true) {
 				$isws = "";
@@ -4126,112 +3803,27 @@ $discord->on('init', function (Discord $discord) {
 			$channel->broadcastTyping();
 
 			$emojiid = $reaction['emoji']->id;
-			// var_dump('$emojianame',$emojianame);
-			// $message->deleteReaction(Message::REACT_DELETE_ID, $emoji, 'member_id')->done(function () {
-				// // ...
-			// });
 			if ($amDev) { var_dump('000000000001111',$emojiid,$emojianame,$emojiname); }
 			if (!$dmMode) {
 				$channel = getChannel($reaction);
-				//$message = $channel->messages->get('id', $reaction['message_id']);
 				$channel->messages->fetch($reaction['message_id'])->then(function (Message $message) use ($reaction,$author,$amDev) {
-					// $message->deleteReaction(Message::REACT_DELETE_ALL)->then(function ($x) use ($reaction) {
 					$emojiname = $reaction['emoji']->name;
 					$message->deleteReaction(Message::REACT_DELETE_ID, $emojiname, $author)->then(function ($x) use ($reaction,$amDev){
 						if ($amDev) { var_dump('$x',$x); }
-						// $reaction->react('⬅');
-						// $reaction->react('➡');
 					});
 				});
 			}
 			$page = null;
 			reactionAction($emojianame,$reaction,$name);
 			return;
-			
-			// if ($emojiname == "⬅") {
-				// $page = 'b';
-			// } else if ($emojiname == "➡") {
-				// $page = 'n';
-			// }
-			
-			
-			// if ($page !== null) {
-			// }
-			
 		}
-		if (!$isws && $dmMode) {
-			return;
-			$emoji = ":triforce:852929142093643806";
-			$channel = getChannel($reaction);
-			// $message = $channel->messages->get('id', $reaction['message_id']);
-				// var_dump("STATUS",$message,$wid);
-			// if ($message == NULL) {
-	// ...
-
-				$channel->messages->fetch($reaction['message_id'])->done(function (Message $message) use ($emoji) {
-			// $message->deleteReaction(Message::REACT_DELETE_ALL)->done(function () use ($message,$emoji) {
-					//var_dump("STATUS",$message);
-					$message->react($emoji);// $message->channel->editMessage($message, $output);
-				});
-			// });
-			// } else {
-				// $message->react($emoji);// $message->channel->editMessage($message, $output);
-					// $message->channel->editMessage($message, $output);
-			// }
-
-			return;
-		}
-
-		$channel = $reaction['channel_id'];
-		
-		
-		
-		if ($channel != '791286916334616576') {
-			return;
-		}
-		
-		$rolearray = [
-			'844460031537446962' => '934836079163473951',
-			'844459869381328946' => '934836370927673386',
-			'844495918740275210' => '934836316481421392',
-			'844495918589673473' => '934836445053603881',
-			'733657344088473631' => '937374251508432959',
-			'844581570764341288' => '867119306391420929',
-			'844495918664384572' => '937378270503120967',
-			'945039418635481169' => '945039541415329792'
-		];
-		
-		$did = $reaction['user_id'];
-		$emoji = $reaction['emoji']->id;
-		$emojiname = $reaction['emoji']->name;
-		$guild = $discord->guilds->get('id', 788607168228229160);
-		$member = $guild->members->get('id', $did);
-		$role = $rolearray[$emoji];
-		try {
-			$member->addRole($rolearray[$emoji])->done(function($return) use ($reaction,$guild,$role,$did,$emojiname,$emoji) {
-				$guild->channels->get('id', 798334904508219462)->sendMessage("<@$did> add <:$emojiname:$emoji> <@&$role>");
-				//sendReply($reaction, "butter that role, joel! they got a {role-id-name}-craving!");
-			});
-		} catch(Exception $e) {
-			error_log("add role - ".print_r($reaction,true));
-			error_log($e);
-		}
-		// sendReply($reaction, "givvem da role, joel! $channel $did $emoji");
-		var_dump("REACTION ADD - ", $rolearray[$emoji], $emoji,$did,$channel);
 	});
 
 	$discord->on(Event::MESSAGE_REACTION_REMOVE, function ($reaction, Discord $discord) {
-
 		var_dump('$reaction-REMOVE');
-		// var_dump($reaction);
 		$dmMode = false;
-		// if($reaction->channel->guild_id === NULL) { 
 		if(!isset($reaction['guild_id']) || $reaction['guild_id'] === NULL) { 
 			$author = $reaction['user_id'];
-
-			
-			// $author = preg_replace("/[^0-9]/", "", $reaction->user);
-			// $author = $reaction['author']['id'];
 			error_log("RA-DM mode");
 			$dmMode = true;
 		} else {
@@ -4240,7 +3832,6 @@ $discord->on('init', function (Discord $discord) {
 				$author = $reaction['author']['id'];
 			} else if ($reaction['user_id'] !== NULL) {
 				$author = $reaction['user_id'];
-
 			} else {
 				error_log("reaction author is NULL");
 			}
@@ -4257,11 +3848,11 @@ $discord->on('init', function (Discord $discord) {
 			var_dump('YEEEEEEEEEEEEET COOOKIESSSSS 55555555555555555555777777777777777');
 			return;
 		}
+
 		var_dump('$isws',$isws);
-		// var_dump($data);
 		var_dump('$reaction-REMOVE-ISWS');
 		var_dump($reaction);
-		//var_dump( checkWorkspace($reaction));
+ 
 		if ($isws && $dmMode) {
 
 			if ($isws === true) {
@@ -4278,121 +3869,48 @@ $discord->on('init', function (Discord $discord) {
 			$emojianame = null;
 			if (isset($eaNames[$emojiname])) {
 				$emojianame = $eaNames[$emojiname];
-
-
-
 			}					
 			
-			
-			
-			// $emojiname = $reaction['emoji']->name;
-			// $emojiid = $reaction['emoji']->id;
-			// // $message->deleteReaction(Message::REACT_DELETE_ID, $emoji, 'member_id')->done(function () {
-				// // // ...
-			// // });
-			// var_dump('000000000001111',$emojiid,$emojianame);
-			// $page = null;
-			// if ($emojiname == "⬅") {
-				// $page = 'b';
-			// } else if ($emojiname == "➡") {
-				// $page = 'n';
-			// }
-			// // $channel = getChannel($reaction);
-			// //$message = $channel->messages->get('id', $reaction['message_id']);
-			// // $channel->messages->fetch($reaction['message_id'])->done(function (Message $message) use ($reaction,$author) {
-				// // // $message->deleteReaction(Message::REACT_DELETE_ALL)->then(function ($x) use ($reaction) {
-				// // $emojiname = $reaction['emoji']->name;
-				// // $message->deleteReaction(Message::REACT_DELETE_ID, $emojiname, $author)->done(function ($x) use ($reaction){
-					// // var_dump('$x',$x);
-					// // $reaction->react('⬅');
-					// // $reaction->react('➡');
-				// // });				
-			// // });
-			// if ($page !== null) {
-				// wsPages($reaction,NULL,$page);
-			// }
-
-
 			$page = null;
 
 			reactionAction($emojianame,$reaction,$name);
-
-			// switch ($emojianame) {
-				// case "playlist":
-					// kodi('queue',null,$reaction);
-				// break;
-				// case "showlist":
-					// kodi('showlist',null,$reaction);
-				// break;
-				// case "tv":
-					// kodi('shows',null,$reaction);
-				// break;
-				// case "back":
-					// kodi('back',null,$reaction);
-				// break;
-				// case "movies":
-					// kodi('movies',null,$reaction);
-				// break;
-				// case "prev":
-					// wsPages($reaction,NULL,'b');
-				// break;
-				// case "next":
-					// wsPages($reaction,NULL,'n');
-				// break;
-				// case "stop":
-					// kodi('stop',null,null);
-				// break;
-				// case "ff":
-					// $arg  = ['time',["+25 seconds"]];
-					// kodi("seek",$arg,$data);
-				// break;
-				// case "playpause":
-					// kodi('playPause',null,null);
-				// break;
-			// }
-			return;
-
-			
-		}
-
-
-
-
-
-		$channel = $reaction['channel_id'];
-		if ($channel != '791286916334616576') {
 			return;
 		}
 
-		$rolearray = [
-			'844460031537446962' => '934836079163473951',
-			'844459869381328946' => '934836370927673386',
-			'844495918740275210' => '934836316481421392',
-			'844495918589673473' => '934836445053603881',
-			'733657344088473631' => '937374251508432959',
-			'844581570764341288' => '867119306391420929',
-			'844495918664384572' => '937378270503120967',
-			'945039418635481169' => '945039541415329792'
-		];
+		// $channel = $reaction['channel_id'];
+		// if ($channel != '791286916334616576') {
+			// return;
+		// }
+
+		// $rolearray = [
+			// '844460031537446962' => '934836079163473951',
+			// '844459869381328946' => '934836370927673386',
+			// '844495918740275210' => '934836316481421392',
+			// '844495918589673473' => '934836445053603881',
+			// '733657344088473631' => '937374251508432959',
+			// '844581570764341288' => '867119306391420929',
+			// '844495918664384572' => '937378270503120967',
+			// '945039418635481169' => '945039541415329792'
+		// ];
 		
-		$did = $reaction['user_id'];
-		$emoji = $reaction['emoji']->id;
-		$emojiname = $reaction['emoji']->name;
-		$guild = $discord->guilds->get('id', 788607168228229160);
-		$member = $guild->members->get('id', $did);
-		$role = $rolearray[$emoji];
-		try {
-			$member->removeRole($rolearray[$emoji])->done(function($return) use ($reaction,$guild,$role,$did,$emojiname,$emoji) {
-				$guild->channels->get('id', 798334904508219462)->sendMessage("<@$did> remove <:$emojiname:$emoji> <@&$role>");
+		// $did = $reaction['user_id'];
+		// $emoji = $reaction['emoji']->id;
+		// $emojiname = $reaction['emoji']->name;
+		// $guild = $discord->guilds->get('id', 788607168228229160);
+		// $member = $guild->members->get('id', $did);
+		// $role = $rolearray[$emoji];
+		// try {
+			// $member->removeRole($rolearray[$emoji])->done(function($return) use ($reaction,$guild,$role,$did,$emojiname,$emoji) {
+				// $guild->channels->get('id', 798334904508219462)->sendMessage("<@$did> remove <:$emojiname:$emoji> <@&$role>");
 			
-			// function () use ($reaction) {
-				// sendReply($reaction, "unbutter that role, joel! they don't want a {role-id-name}-craving!");
-			});
-		} catch(Exception $e) {
-			error_log(print_r($reaction,true));
-			error_log($e);
-		}			// sendReply($reaction, "giveitaway givitaway nowww $channel $did $emoji");
-		var_dump("REACTION REMOVE",$emoji,$did,$channel);
+			// // function () use ($reaction) {
+				// // sendReply($reaction, "unbutter that role, joel! they don't want a {role-id-name}-craving!");
+			// });
+		// } catch(Exception $e) {
+			// error_log(print_r($reaction,true));
+			// error_log($e);
+		// }			// sendReply($reaction, "giveitaway givitaway nowww $channel $did $emoji");
+		// var_dump("REACTION REMOVE",$emoji,$did,$channel);
 	});
 
 	// Listen for messages.
@@ -4417,7 +3935,6 @@ $discord->on('init', function (Discord $discord) {
 	});
 
 	$discord->on(Event::MESSAGE_CREATE, function (Message $data, Discord $discord) {
-	// var_dump($data->channel->guild_id);
 	
 	$data['content'] = '.'.$data['content'];
 	
@@ -4484,9 +4001,6 @@ $discord->on('init', function (Discord $discord) {
 			eventMgr('add',$data);
 		}
 		
-		// $eventadchs = [835671836977004615,957077695836082266];
-		// $venueadchs = [788934728468004874,957077271485771797];
-
 // workspace dev and testing stubs
 		if (isset($data['content']) && strtolower($data['content']) === '.testws' || startsWith(strtolower($data['content']),'.workspace') || startsWith(strtolower($data['content']),'.wsout ') || startsWith(strtolower($data['content']),'.wfortune')) {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
@@ -4583,7 +4097,7 @@ $discord->on('init', function (Discord $discord) {
 			}
 		}
 		
-		// $kodichans = ['1274001261976354886','1320107722393522207'];
+// limit kodi function access 
 		$kodichans = ['1370142425292738673'];
 
 // emergency stop for player status refresher
@@ -4750,6 +4264,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 				return;
 			}
 		}
+
 		if (isset($data['content']) && strtolower($data['content']) === '.previous') {
 			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
@@ -4759,7 +4274,6 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 		}
 
 		if (isset($data['content']) && strtolower($data['content']) === '.kodiaudio') {
-			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				$msg = kodi('audiostream',null,$data);
 				sendReply($data, $msg);
@@ -4801,6 +4315,39 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
+		if (isset($data['content']) && (strtolower($data['content']) === '.favs' || startsWith(strtolower($data['content']),'.fav ') || startsWith(strtolower($data['content']),'.unfav ') || startsWith(strtolower($data['content']),'.selfav '))) {
+			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
+				$cmds = ['fav','favs','bookmarks','selfav'];
+				$cmdargs = ['unbookmark','resume'];
+				$args = explode(' ',$data['content']);
+				
+				var_dump($args);
+				$cmd = ltrim(array_shift($args),'.');
+				$arg  = implode(' ',$args);
+				var_dump($cmd);
+				if (!in_array($cmd,$cmds)) {
+					return;
+				}
+				if (($cmd == 'bookmark' && !empty($arg) && !is_numeric($arg)) || (in_array($cmd,$cmdargs) && (empty($arg) || !is_numeric($arg)))) {
+					sendReply($data, "tp436: invalid selection");
+					return;
+				}
+				
+				$channel = $discord->getChannel('1274001261976354886');
+				$members = $channel->members;
+				$members = json_decode(json_encode($members),true);
+				var_dump($members);
+				$members = array_keys($members);
+				var_dump($members);
+				$invc = ($author == '380675774794956800' || in_array($author,$members));
+				$args = [$arg,$author,$invc];
+				
+				$msg = kodi($cmd,$args,$data);
+				sendReply($data, $msg);
+				return;
+			}
+		}
+
 		if (isset($data['content']) && strtolower($data['content']) === '.next') {
 			// if (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans)) {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
@@ -4812,7 +4359,7 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 		if (isset($data['content']) && strtolower(trim($data['content'])) === '.kodi') {
 			if (($author == '380675774794956800' && $dmMode) || (isset($data['channel_id']) && !empty($data['channel_id']) && in_array($data['channel_id'],$kodichans))) {
 				// initWorkspace($data,$wid = null, $new = false, $output = null,$name = '') {
-				initWorkspace($data,'reset',false,kodi('sources',null,"returnarray"));
+				initWorkspace($data,'reset',false,kodi('showlist',null,"returnarray"));
 				initWorkspace($data,'reset',false,kodi('seek'),'player');
 				//sendReply($data, $msg);
 			}
@@ -5101,13 +4648,6 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 			}
 		}
 
-		if (isset($data['content']) && isset($data['channel_id']) && $data['channel_id'] == '1144019282376802425') {
-			$barding = file_get_contents('barding.ch');
-			if ($barding === false) { $barding = ''; }
-			$barding .= json_encode($data);
-			file_put_contents('barding.ch',$barding);
-		}
-
 		if (isset($data['content']) && strtolower($data['content']) === '.poke') {
 			if (isset($data['channel_id']) && !empty($data['channel_id'])) {
 				// $user = getUser($author);
@@ -5177,9 +4717,6 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 				sleep(1);
 				sendReply($data, ".reset");
 				if ($GLOBALS['filePrefix'] != 'DEV-') { $data['content'] = '.reset'; }
-				// sendReply($data,"Rebooting...");
-				// $discord->close();
-				// exit;
 			} else { sendReply('380675774794956800', "bad auth from $author <@$author>"); sendReply($data,"https://www.crystalshouts.com/noauth.jpg");	}
 		}
 
@@ -5197,8 +4734,6 @@ $json = '{"jsonrpc":"2.0","method":"Playlist.GetPlaylists"}'; //,"params":[1,["a
 				file_put_contents($GLOBALS['filePrefix'].'lastchan',$channelid);
 				sendReply($data, "Restarting...");
 				sleep(3);
-				// sendReply($data,"Rebooting...");
-				// $discord->close();
 				exit;
 			} else { sendReply('380675774794956800', "bad auth from $author <@$author>"); sendReply($data,"https://www.crystalshouts.com/noauth.jpg");	}
 		}
